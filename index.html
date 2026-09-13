@@ -1,1 +1,1069 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1b2b">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="薛定谔的个人网站——未定态 / Between States。">
+  <title>薛定谔｜未定态 / Between States</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%230b1b2b'/%3E%3Cpath d='M15 18h34M15 46h34M22 13v38M42 13v38' stroke='%23f4eedf' stroke-width='3'/%3E%3Cpath d='M18 42 47 21' stroke='%23f2644b' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <script>document.documentElement.classList.add('js');</script>
+  <style>
+    :root {
+      --ink: #0b1b2b;
+      --ink-soft: #172c3f;
+      --blue: #2a61a8;
+      --blue-light: #b9cee7;
+      --coral: #f2644b;
+      --paper: #f4eedf;
+      --paper-deep: #e8dfca;
+      --white: #fffdf8;
+      --line: rgba(11, 27, 43, 0.22);
+      --page-pad: clamp(1rem, 4vw, 4.5rem);
+      --display-font: "STKaiti", "KaiTi", "Kaiti SC", "FZKai-Z03", "FangSong", "STFangsong", serif;
+      --sans-font: "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", Arial, sans-serif;
+    }
 
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--ink);
+      color: var(--ink);
+      font-family: var(--sans-font);
+      font-size: 100%;
+      scroll-padding-top: 1rem;
+    }
+
+    body {
+      margin: 0;
+      min-width: 20rem;
+      overflow-x: clip;
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 1rem;
+      line-height: 1.65;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: inherit;
+      text-decoration-thickness: 0.08em;
+      text-underline-offset: 0.18em;
+    }
+
+    button,
+    a {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--coral);
+      outline-offset: 4px;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .skip-link {
+      position: fixed;
+      z-index: 100;
+      top: 0.75rem;
+      left: 0.75rem;
+      padding: 0.7rem 1rem;
+      transform: translateY(-160%);
+      background: var(--white);
+      color: var(--ink);
+      border: 2px solid var(--ink);
+      font-weight: 800;
+    }
+
+    .skip-link:focus {
+      transform: translateY(0);
+    }
+
+    .hero {
+      position: relative;
+      isolation: isolate;
+      min-height: 100vh;
+      min-height: 100svh;
+      overflow: hidden;
+      padding: 0 var(--page-pad) max(0.9rem, env(safe-area-inset-bottom));
+      background:
+        linear-gradient(90deg, transparent calc(50% - 0.5px), rgba(244, 238, 223, 0.12) 50%, transparent calc(50% + 0.5px)),
+        var(--ink);
+      color: var(--paper);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto auto;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset: 0 auto 0 0;
+      width: clamp(0.45rem, 1vw, 0.8rem);
+      background: var(--coral);
+    }
+
+    .site-header {
+      min-height: 4.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid rgba(244, 238, 223, 0.32);
+    }
+
+    .wordmark {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 850;
+      letter-spacing: 0.12em;
+    }
+
+    .wordmark span {
+      color: var(--coral);
+      font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .menu-toggle {
+      display: none;
+      min-height: 2.75rem;
+      padding: 0.55rem 0.85rem;
+      border: 1px solid rgba(244, 238, 223, 0.46);
+      border-radius: 0;
+      background: transparent;
+      color: var(--paper);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .site-nav ul {
+      display: flex;
+      align-items: center;
+      gap: clamp(1rem, 2.5vw, 2.4rem);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .site-nav a {
+      display: inline-block;
+      padding: 0.65rem 0;
+      color: var(--paper);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .site-nav a:hover,
+    .site-nav a:focus-visible {
+      color: var(--coral);
+    }
+
+    .hero-stage {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(9rem, 0.8fr) minmax(15rem, 0.88fr) minmax(9rem, 0.8fr);
+      align-items: center;
+      gap: clamp(1rem, 5vw, 5rem);
+      padding: clamp(0.75rem, 2.5vh, 2rem) 0 0;
+    }
+
+    .hero-note,
+    .hero-folio {
+      align-self: center;
+    }
+
+    .hero-note {
+      max-width: 15rem;
+      border-left: 3px solid var(--blue-light);
+      padding-left: 1rem;
+    }
+
+    .kicker {
+      margin: 0 0 0.5rem;
+      color: var(--coral);
+      font-size: 0.78rem;
+      font-weight: 850;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .hero-note p:last-child,
+    .hero-folio p {
+      margin: 0;
+      color: rgba(244, 238, 223, 0.78);
+      font-size: clamp(0.86rem, 1.4vw, 1rem);
+    }
+
+    .hero-folio {
+      justify-self: end;
+      min-width: 8.5rem;
+      text-align: right;
+    }
+
+    .folio-number {
+      display: block;
+      color: var(--blue-light);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.5rem, 5vw, 5.5rem);
+      font-weight: 700;
+      line-height: 0.9;
+      letter-spacing: -0.06em;
+    }
+
+    .avatar-frame {
+      position: relative;
+      justify-self: center;
+      width: clamp(10rem, 22vw, 18rem);
+      aspect-ratio: 4 / 5;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(244, 238, 223, 0.65);
+      background:
+        linear-gradient(145deg, transparent 48%, rgba(185, 206, 231, 0.18) 48% 52%, transparent 52%),
+        var(--ink-soft);
+      color: var(--paper);
+    }
+
+    .avatar-frame::before,
+    .avatar-frame::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .avatar-frame::before {
+      inset: 0.6rem -0.65rem -0.65rem 0.6rem;
+      z-index: -1;
+      border: 1px solid var(--coral);
+    }
+
+    .avatar-frame::after {
+      width: 3rem;
+      height: 3rem;
+      top: -0.45rem;
+      left: -0.45rem;
+      border-top: 0.45rem solid var(--blue);
+      border-left: 0.45rem solid var(--blue);
+    }
+
+    .avatar-placeholder {
+      width: calc(100% - 2.2rem);
+      min-height: calc(100% - 2.2rem);
+      display: grid;
+      place-content: center;
+      gap: 0.55rem;
+      border: 1px dashed rgba(244, 238, 223, 0.45);
+      text-align: center;
+    }
+
+    .avatar-placeholder strong {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      letter-spacing: 0.18em;
+    }
+
+    .avatar-placeholder span {
+      color: rgba(244, 238, 223, 0.66);
+      font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+    }
+
+    .hero-title {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      padding: 0.15rem 0 0.25rem;
+      text-align: center;
+    }
+
+    .name-lock {
+      position: relative;
+      display: inline-grid;
+      place-items: center;
+      max-width: 100%;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--paper);
+      font-family: var(--display-font);
+      font-size: clamp(5.2rem, 22vw, 20rem);
+      font-weight: 400;
+      line-height: 0.78;
+      letter-spacing: -0.13em;
+      white-space: nowrap;
+      transform: translateX(-0.04em);
+    }
+
+    .name-underline {
+      position: absolute;
+      left: 4%;
+      bottom: -0.45rem;
+      width: 96%;
+      height: clamp(0.8rem, 2vw, 1.5rem);
+      overflow: visible;
+      color: var(--coral);
+    }
+
+    .name-underline path {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 7;
+      stroke-linecap: round;
+      stroke-dasharray: 690;
+      stroke-dashoffset: 690;
+    }
+
+    .hero-footer {
+      min-height: 3.1rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid rgba(244, 238, 223, 0.32);
+      color: rgba(244, 238, 223, 0.76);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+    }
+
+    .hero-footer a {
+      color: var(--paper);
+      text-decoration: none;
+    }
+
+    .hero-footer a::after {
+      content: " ↓";
+      color: var(--coral);
+      font-size: 1rem;
+    }
+
+    main {
+      background: var(--paper);
+    }
+
+    .section {
+      position: relative;
+      padding: clamp(4.5rem, 10vw, 9rem) var(--page-pad);
+      border-top: 1px solid var(--line);
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: minmax(7rem, 0.48fr) minmax(0, 1.52fr);
+      gap: clamp(2rem, 7vw, 8rem);
+      max-width: 92rem;
+      margin: 0 auto;
+    }
+
+    .section-index {
+      position: sticky;
+      top: 1.5rem;
+      align-self: start;
+      display: grid;
+      gap: 0.6rem;
+      font-size: 0.8rem;
+      font-weight: 850;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .section-index::before {
+      content: attr(data-number);
+      width: 3rem;
+      height: 3rem;
+      display: grid;
+      place-items: center;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      color: var(--blue);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.1rem;
+      letter-spacing: 0;
+    }
+
+    .section h2 {
+      margin: 0 0 clamp(2rem, 4vw, 4rem);
+      font-family: var(--display-font);
+      font-size: clamp(3.2rem, 8vw, 8rem);
+      font-weight: 400;
+      line-height: 0.95;
+      letter-spacing: -0.08em;
+    }
+
+    .placeholder-lead {
+      margin: 0 0 clamp(2.5rem, 5vw, 4rem);
+      max-width: 18ch;
+      color: var(--ink);
+      font-family: var(--display-font);
+      font-size: clamp(1.9rem, 4vw, 4.2rem);
+      line-height: 1.18;
+    }
+
+    .placeholder-bracket {
+      color: var(--blue);
+    }
+
+    .meta-list {
+      margin: 0;
+      border-top: 2px solid var(--ink);
+    }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: minmax(7rem, 0.45fr) minmax(0, 1fr);
+      gap: 1.5rem;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .meta-row dt {
+      font-size: 0.82rem;
+      font-weight: 850;
+      letter-spacing: 0.12em;
+    }
+
+    .meta-row dd {
+      margin: 0;
+      color: #344759;
+      font-size: 1rem;
+    }
+
+    .placeholder {
+      display: inline-block;
+      color: #344759;
+      font-style: normal;
+    }
+
+    .slices {
+      background: var(--blue);
+      color: var(--white);
+      border-top-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .slices .section-index::before {
+      color: var(--paper);
+    }
+
+    .slice-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .slice-item {
+      display: grid;
+      grid-template-columns: 4.5rem minmax(8rem, 0.5fr) minmax(0, 1fr);
+      gap: clamp(1rem, 4vw, 3rem);
+      align-items: baseline;
+      padding: clamp(1.4rem, 3vw, 2.3rem) 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .slice-number {
+      color: var(--paper);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1rem;
+      font-style: italic;
+    }
+
+    .slice-item h3 {
+      margin: 0;
+      font-family: var(--display-font);
+      font-size: clamp(1.75rem, 3vw, 3rem);
+      font-weight: 400;
+      line-height: 1;
+    }
+
+    .slice-item p {
+      margin: 0;
+      color: rgba(255, 253, 248, 0.82);
+    }
+
+    .contact {
+      overflow: hidden;
+      background: var(--coral);
+      color: var(--ink);
+    }
+
+    .contact::after {
+      content: "BETWEEN STATES";
+      position: absolute;
+      right: -0.07em;
+      bottom: -0.3em;
+      color: rgba(11, 27, 43, 0.08);
+      font-family: Arial Black, Impact, sans-serif;
+      font-size: clamp(4.5rem, 17vw, 16rem);
+      font-weight: 900;
+      line-height: 0.8;
+      letter-spacing: -0.08em;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .contact .section-grid {
+      position: relative;
+      z-index: 1;
+    }
+
+    .contact .section-index::before {
+      color: var(--ink);
+    }
+
+    .contact-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0;
+      margin: 0;
+      border: 2px solid var(--ink);
+    }
+
+    .contact-item {
+      min-height: 9.5rem;
+      padding: 1.2rem;
+      border-right: 1px solid var(--ink);
+    }
+
+    .contact-item:last-child {
+      border-right: 0;
+    }
+
+    .contact-item dt {
+      margin-bottom: 2.5rem;
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .contact-item dd {
+      margin: 0;
+      font-size: clamp(1rem, 1.7vw, 1.3rem);
+      font-weight: 800;
+    }
+
+    .site-footer {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: clamp(4rem, 8vw, 8rem);
+      padding-top: 1rem;
+      border-top: 1px solid var(--ink);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+    }
+
+    .js .reveal {
+      opacity: 0;
+      transform: translateY(1.25rem);
+    }
+
+    .js .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 620ms ease, transform 620ms ease;
+    }
+
+    .js .hero > * {
+      opacity: 0;
+    }
+
+    .js .hero.is-ready > * {
+      opacity: 1;
+      transition: opacity 700ms ease;
+    }
+
+    .js .hero.is-ready .hero-stage {
+      transition-delay: 100ms;
+    }
+
+    .js .hero.is-ready .hero-title {
+      transition-delay: 180ms;
+    }
+
+    .js .hero.is-ready h1 {
+      animation: name-reveal 820ms 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .js .hero.is-ready .name-underline path {
+      animation: draw-line 820ms 780ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes name-reveal {
+      from { clip-path: inset(0 100% 0 0); }
+      to { clip-path: inset(0 0 0 0); }
+    }
+
+    @keyframes draw-line {
+      to { stroke-dashoffset: 0; }
+    }
+
+    @media (max-width: 760px) {
+      .hero {
+        grid-template-rows: auto minmax(0, 1fr) auto auto;
+      }
+
+      .site-header {
+        min-height: 4rem;
+      }
+
+      .menu-toggle {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      html:not(.js) .menu-toggle {
+        display: none;
+      }
+
+      html:not(.js) .site-header {
+        flex-wrap: wrap;
+        padding-bottom: 0.5rem;
+      }
+
+      .site-nav {
+        position: absolute;
+        z-index: 10;
+        top: 4rem;
+        right: var(--page-pad);
+        left: var(--page-pad);
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--paper);
+        background: var(--ink-soft);
+        box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.28);
+      }
+
+      .site-nav[hidden] {
+        display: none !important;
+      }
+
+      html:not(.js) .site-nav {
+        position: static;
+        flex-basis: 100%;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .site-nav ul {
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .site-nav a {
+        min-height: 2.75rem;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .hero-stage {
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: 0.85rem;
+        padding-top: 0.7rem;
+      }
+
+      .hero-note {
+        align-self: start;
+        margin-top: 1rem;
+        padding-left: 0.65rem;
+      }
+
+      .hero-note p:last-child {
+        display: none;
+      }
+
+      .hero-folio {
+        align-self: end;
+        padding-bottom: 1rem;
+      }
+
+      .hero-folio p {
+        display: none;
+      }
+
+      .avatar-frame {
+        width: clamp(8.5rem, 28svh, 13.5rem);
+        max-width: 42vw;
+      }
+
+      .hero-title {
+        padding-top: 0;
+      }
+
+      h1 {
+        font-size: clamp(5.2rem, 22vw, 8rem);
+      }
+
+      .hero-footer {
+        min-height: 2.8rem;
+        font-size: 0.7rem;
+      }
+
+      .hero-footer span {
+        display: none;
+      }
+
+      .section-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+
+      .section-index {
+        position: static;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+      }
+
+      .section-index::before {
+        width: 2.6rem;
+        height: 2.6rem;
+      }
+
+      .section h2 {
+        margin-bottom: 2.25rem;
+      }
+
+      .slice-item {
+        grid-template-columns: 2.5rem minmax(0, 1fr);
+      }
+
+      .slice-item p {
+        grid-column: 2;
+      }
+
+      .contact-list {
+        grid-template-columns: 1fr;
+      }
+
+      .contact-item {
+        min-height: auto;
+        display: grid;
+        grid-template-columns: 6rem minmax(0, 1fr);
+        gap: 1rem;
+        padding: 1rem;
+        border-right: 0;
+        border-bottom: 1px solid var(--ink);
+      }
+
+      .contact-item:last-child {
+        border-bottom: 0;
+      }
+
+      .contact-item dt {
+        margin: 0;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .wordmark {
+        font-size: 0.84rem;
+      }
+
+      .hero-note .kicker {
+        max-width: 6rem;
+        line-height: 1.35;
+      }
+
+      .folio-number {
+        font-size: 2.4rem;
+      }
+
+      .avatar-placeholder strong {
+        max-width: 4em;
+        line-height: 1.5;
+      }
+
+      .avatar-placeholder span {
+        display: none;
+      }
+
+      .meta-row {
+        grid-template-columns: 6rem minmax(0, 1fr);
+        gap: 0.75rem;
+      }
+
+      .site-footer {
+        align-items: flex-end;
+      }
+    }
+
+    @media (max-height: 670px) {
+      .site-header {
+        min-height: 3.6rem;
+      }
+
+      .hero-stage {
+        padding-top: 0.35rem;
+      }
+
+      .avatar-frame {
+        width: clamp(7.6rem, 25svh, 10.5rem);
+      }
+
+      .avatar-placeholder {
+        width: calc(100% - 1.35rem);
+        min-height: calc(100% - 1.35rem);
+      }
+
+      .hero-footer {
+        min-height: 2.4rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-delay: 0ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
+      }
+
+      .js .reveal,
+      .js .hero > * {
+        opacity: 1;
+        transform: none;
+      }
+
+      .name-underline path {
+        stroke-dashoffset: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+
+  <section class="hero" id="top" aria-labelledby="site-title">
+    <header class="site-header">
+      <a class="wordmark" href="#top" aria-label="返回首页顶部">BETWEEN STATES <span>／00</span></a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">目录</button>
+      <nav class="site-nav" id="site-nav" aria-label="主导航">
+        <ul>
+          <li><a href="#about">关于我</a></li>
+          <li><a href="#slices">我的切片</a></li>
+          <li><a href="#contact">联系方式</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <div class="hero-stage">
+      <aside class="hero-note" aria-label="网站主题">
+        <p class="kicker">未定态 / Between States</p>
+        <p>个人站点 · 内容待补</p>
+      </aside>
+
+      <div class="avatar-frame" role="img" aria-label="头像待补">
+        <div class="avatar-placeholder">
+          <strong>头像待补</strong>
+          <span>PORTRAIT / PENDING</span>
+        </div>
+      </div>
+
+      <aside class="hero-folio" aria-label="站点编号">
+        <span class="folio-number">00</span>
+        <p>PERSONAL FILE<br>STATUS / OPEN</p>
+      </aside>
+    </div>
+
+    <div class="hero-title">
+      <div class="name-lock">
+        <h1 id="site-title">薛定谔</h1>
+        <svg class="name-underline" viewBox="0 0 700 24" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M7 15C128 4 226 20 350 12C476 4 563 18 693 8"></path>
+        </svg>
+      </div>
+    </div>
+
+    <div class="hero-footer">
+      <a href="#about">向下浏览</a>
+      <span>ABOUT · SLICES · CONTACT</span>
+    </div>
+  </section>
+
+  <main id="main-content">
+    <section class="section about" id="about" aria-labelledby="about-title">
+      <div class="section-grid reveal">
+        <div class="section-index" data-number="01">About</div>
+        <div>
+          <h2 id="about-title">关于我</h2>
+          <p class="placeholder-lead"><span class="placeholder-bracket">[</span> 个人简介待补 <span class="placeholder-bracket">]</span></p>
+          <dl class="meta-list">
+            <div class="meta-row">
+              <dt>当前身份</dt>
+              <dd><span class="placeholder">[待补]</span></dd>
+            </div>
+            <div class="meta-row">
+              <dt>所在城市</dt>
+              <dd><span class="placeholder">[待补]</span></dd>
+            </div>
+            <div class="meta-row">
+              <dt>正在关注</dt>
+              <dd><span class="placeholder">[待补]</span></dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <section class="section slices" id="slices" aria-labelledby="slices-title">
+      <div class="section-grid reveal">
+        <div class="section-index" data-number="02">Slices</div>
+        <div>
+          <h2 id="slices-title">我的切片</h2>
+          <ol class="slice-list">
+            <li class="slice-item">
+              <span class="slice-number">01</span>
+              <h3>此刻</h3>
+              <p>[当前状态或近况待补]</p>
+            </li>
+            <li class="slice-item">
+              <span class="slice-number">02</span>
+              <h3>来路</h3>
+              <p>[经历或背景待补]</p>
+            </li>
+            <li class="slice-item">
+              <span class="slice-number">03</span>
+              <h3>偏好</h3>
+              <p>[兴趣或关注方向待补]</p>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- 可选作品区：目前未提供项目内容，因此按需求隐藏。补充真实项目后移除 hidden 属性即可显示。 -->
+    <section class="section works" id="works" aria-labelledby="works-title" hidden>
+      <div class="section-grid reveal">
+        <div class="section-index" data-number="03">Works</div>
+        <div>
+          <h2 id="works-title">作品</h2>
+          <p class="placeholder-lead">[项目内容待补]</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section contact" id="contact" aria-labelledby="contact-title">
+      <div class="section-grid reveal">
+        <div class="section-index" data-number="03">Contact</div>
+        <div>
+          <h2 id="contact-title">联系方式</h2>
+          <p class="placeholder-lead"><span class="placeholder-bracket">[</span> 公开联系方式待补 <span class="placeholder-bracket">]</span></p>
+          <dl class="contact-list">
+            <div class="contact-item">
+              <dt>邮箱</dt>
+              <dd aria-label="邮箱待补">[待补]</dd>
+            </div>
+            <div class="contact-item">
+              <dt>社交平台</dt>
+              <dd aria-label="社交平台待补">[待补]</dd>
+            </div>
+            <div class="contact-item">
+              <dt>其他方式</dt>
+              <dd aria-label="其他联系方式待补">[待补]</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <footer class="site-footer">
+        <span>薛定谔</span>
+        <span>未定态 / BETWEEN STATES</span>
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const hero = document.querySelector('.hero');
+      const toggle = document.querySelector('.menu-toggle');
+      const nav = document.querySelector('.site-nav');
+      const mobileQuery = window.matchMedia('(max-width: 760px)');
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      const syncNavigation = () => {
+        if (mobileQuery.matches) {
+          nav.hidden = toggle.getAttribute('aria-expanded') !== 'true';
+        } else {
+          nav.hidden = false;
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      };
+
+      toggle.addEventListener('click', () => {
+        const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!isOpen));
+        syncNavigation();
+      });
+
+      nav.addEventListener('click', (event) => {
+        if (mobileQuery.matches && event.target.closest('a')) {
+          toggle.setAttribute('aria-expanded', 'false');
+          syncNavigation();
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+          toggle.setAttribute('aria-expanded', 'false');
+          syncNavigation();
+          toggle.focus();
+        }
+      });
+
+      mobileQuery.addEventListener('change', syncNavigation);
+      syncNavigation();
+
+      requestAnimationFrame(() => hero.classList.add('is-ready'));
+
+      const revealItems = document.querySelectorAll('.reveal');
+      if (reducedMotion.matches || !('IntersectionObserver' in window)) {
+        revealItems.forEach((item) => item.classList.add('is-visible'));
+        return;
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.14 });
+
+      revealItems.forEach((item) => observer.observe(item));
+    })();
+  </script>
+</body>
+</html>
