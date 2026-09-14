@@ -1,0 +1,21 @@
+{
+  "name": "zhangdaosong-personal-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "scripts\\run-node.cmd node_modules\\vite\\bin\\vite.js",
+    "build": "scripts\\run-node.cmd node_modules\\vite\\bin\\vite.js build",
+    "preview": "scripts\\run-node.cmd node_modules\\vite\\bin\\vite.js preview",
+    "check": "scripts\\run-node.cmd scripts\\validate-site.mjs",
+    "promote": "scripts\\run-node.cmd scripts\\promote-build.mjs"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "vite": "^8.3.0"
+  }
+}
