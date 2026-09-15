@@ -142,13 +142,20 @@ a {
   will-change: transform;
 }
 
+.ambient.is-paused .aurora,
+.ambient.is-paused .ambient__grid {
+  animation-play-state: paused !important;
+}
+
 .aurora--blue {
   inset: -32%;
   opacity: var(--aurora-opacity, 0.52);
   background:
     radial-gradient(ellipse var(--blob-a-w, 40%) var(--blob-a-h, 36%) at var(--blob-a-x, 28%) var(--blob-a-y, 36%), rgba(var(--light-a, 88, 120, 221), var(--light-a-alpha, 0.8)), rgba(var(--light-a, 88, 120, 221), 0.3) 40%, transparent 74%),
     radial-gradient(ellipse var(--blob-b-w, 26%) var(--blob-b-h, 23%) at var(--blob-b-x, 76%) var(--blob-b-y, 72%), rgba(var(--light-b, 229, 151, 99), var(--light-b-alpha, 0.6)), transparent 74%);
-  animation: ambient-drift var(--drift-duration, 38s) ease-in-out var(--drift-delay, -9s) infinite;
+  animation:
+    ambient-drift var(--drift-duration, 30s) cubic-bezier(0.42, 0, 0.58, 1) var(--drift-delay, -9s) infinite,
+    ambient-breathe var(--breath-duration, 22s) ease-in-out var(--breath-delay, -6s) infinite;
 }
 
 .aurora--cyan {
@@ -157,7 +164,9 @@ a {
   background:
     radial-gradient(ellipse var(--blob-a-w, 48%) var(--blob-a-h, 34%) at var(--blob-a-x, 34%) var(--blob-a-y, 58%), rgba(var(--light-a, 66, 137, 172), 0.58), rgba(var(--light-a, 66, 137, 172), 0.2) 44%, transparent 76%),
     radial-gradient(ellipse var(--blob-b-w, 34%) var(--blob-b-h, 26%) at var(--blob-b-x, 72%) var(--blob-b-y, 32%), rgba(var(--light-b, 210, 134, 88), 0.42), transparent 75%);
-  animation: ambient-drift var(--drift-duration, 56s) ease-in-out var(--drift-delay, -23s) infinite alternate;
+  animation:
+    ambient-drift var(--drift-duration, 42s) cubic-bezier(0.42, 0, 0.58, 1) var(--drift-delay, -23s) infinite alternate,
+    ambient-breathe var(--breath-duration, 26s) ease-in-out var(--breath-delay, -12s) infinite;
 }
 
 .aurora--violet {
@@ -166,7 +175,9 @@ a {
   background:
     radial-gradient(ellipse var(--blob-a-w, 38%) var(--blob-a-h, 34%) at var(--blob-a-x, 68%) var(--blob-a-y, 28%), rgba(var(--light-a, 126, 98, 205), var(--light-a-alpha, 0.76)), rgba(var(--light-a, 126, 98, 205), 0.28) 42%, transparent 75%),
     radial-gradient(ellipse var(--blob-b-w, 25%) var(--blob-b-h, 23%) at var(--blob-b-x, 24%) var(--blob-b-y, 76%), rgba(var(--light-b, 224, 116, 149), var(--light-b-alpha, 0.56)), transparent 74%);
-  animation: ambient-drift var(--drift-duration, 44s) ease-in-out var(--drift-delay, -17s) infinite reverse;
+  animation:
+    ambient-drift var(--drift-duration, 34s) cubic-bezier(0.42, 0, 0.58, 1) var(--drift-delay, -17s) infinite reverse,
+    ambient-breathe var(--breath-duration, 24s) ease-in-out var(--breath-delay, -10s) infinite;
 }
 
 .aurora--coral {
@@ -1052,9 +1063,15 @@ a {
 
 @keyframes ambient-drift {
   0%, 100% { transform: translate3d(var(--x0, -10%), var(--y0, -8%), 0) scale(1.04) rotate(var(--r0, -2deg)); }
-  29% { transform: translate3d(var(--x1, 11%), var(--y1, -3%), 0) scale(1.1) rotate(var(--r1, 2deg)); }
-  63% { transform: translate3d(var(--x2, 4%), var(--y2, 12%), 0) scale(1.07) rotate(var(--r2, -1deg)); }
-  84% { transform: translate3d(var(--x3, -6%), var(--y3, 5%), 0) scale(1.12) rotate(var(--r3, 1deg)); }
+  25% { transform: translate3d(var(--x1, 11%), var(--y1, -3%), 0) scale(1.1) rotate(var(--r1, 2deg)); }
+  50% { transform: translate3d(var(--x2, 4%), var(--y2, 12%), 0) scale(1.07) rotate(var(--r2, -1deg)); }
+  75% { transform: translate3d(var(--x3, -6%), var(--y3, 5%), 0) scale(1.12) rotate(var(--r3, 1deg)); }
+}
+
+@keyframes ambient-breathe {
+  0%, 100% { opacity: var(--opacity-low, 0.42); }
+  38% { opacity: var(--opacity-high, 0.55); }
+  70% { opacity: var(--opacity-mid, 0.48); }
 }
 
 @keyframes micro-drift {
@@ -1153,8 +1170,6 @@ a {
     opacity: 0.26;
     animation-duration: 96s;
   }
-
-  .aurora--cyan { opacity: 0.16; }
 
   .hero {
     min-height: 100%;

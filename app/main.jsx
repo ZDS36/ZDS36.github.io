@@ -29,9 +29,12 @@ const LIGHT_PALETTES = [
   ['72, 143, 151', '218, 124, 102']
 ];
 
-function createDriftStyle(minDuration, maxDuration, spread, palette) {
+function createDriftStyle(minDuration, maxDuration, spread, palette, minOpacity, maxOpacity) {
   const duration = randomBetween(minDuration, maxDuration);
   const point = () => `${randomBetween(-spread, spread).toFixed(1)}%`;
+  const lowOpacity = randomBetween(minOpacity, Math.max(minOpacity, maxOpacity - 0.08));
+  const highOpacity = randomBetween(lowOpacity + 0.05, maxOpacity);
+  const breathDuration = randomBetween(17, 29);
 
   return {
     '--drift-duration': `${duration.toFixed(1)}s`,
@@ -60,15 +63,20 @@ function createDriftStyle(minDuration, maxDuration, spread, palette) {
     '--blob-b-y': `${randomBetween(24, 80).toFixed(1)}%`,
     '--light-a-alpha': randomBetween(0.68, 0.84).toFixed(2),
     '--light-b-alpha': randomBetween(0.48, 0.66).toFixed(2),
-    '--aurora-opacity': randomBetween(0.44, 0.57).toFixed(2)
+    '--aurora-opacity': highOpacity.toFixed(2),
+    '--opacity-low': lowOpacity.toFixed(2),
+    '--opacity-high': highOpacity.toFixed(2),
+    '--opacity-mid': ((lowOpacity + highOpacity) / 2).toFixed(2),
+    '--breath-duration': `${breathDuration.toFixed(1)}s`,
+    '--breath-delay': `-${randomBetween(0, breathDuration).toFixed(1)}s`
   };
 }
 
 const paletteIndex = Math.floor(Math.random() * LIGHT_PALETTES.length);
 const AMBIENT_MOTION = {
-  blue: createDriftStyle(31, 46, 15, LIGHT_PALETTES[paletteIndex]),
-  cyan: createDriftStyle(46, 68, 18, LIGHT_PALETTES[(paletteIndex + 3) % LIGHT_PALETTES.length]),
-  violet: createDriftStyle(37, 54, 14, LIGHT_PALETTES[(paletteIndex + 1 + Math.floor(Math.random() * 3)) % LIGHT_PALETTES.length])
+  blue: createDriftStyle(23, 34, 15, LIGHT_PALETTES[paletteIndex], 0.43, 0.58),
+  cyan: createDriftStyle(34, 49, 18, LIGHT_PALETTES[(paletteIndex + 3) % LIGHT_PALETTES.length], 0.14, 0.24),
+  violet: createDriftStyle(27, 40, 14, LIGHT_PALETTES[(paletteIndex + 1 + Math.floor(Math.random() * 3)) % LIGHT_PALETTES.length], 0.4, 0.54)
 };
 
 const PAGE_TITLES = {
@@ -102,15 +110,17 @@ function useHashPage() {
 }
 
 function AmbientLight() {
+  const ambientRef = useRef(null);
   const sweepRef = useRef(null);
   const shimmerRef = useRef(null);
 
   useEffect(() => {
+    const ambient = ambientRef.current;
     const sweep = sweepRef.current;
     const shimmer = shimmerRef.current;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    if (!sweep || !shimmer || reducedMotion) return undefined;
+    if (!ambient || !sweep || !shimmer || reducedMotion) return undefined;
 
     let sweepTimer;
     let shimmerTimer;
@@ -151,16 +161,33 @@ function AmbientLight() {
 
     const handleSweepEnd = () => {
       sweep.classList.remove('is-sweeping');
-      scheduleSweep();
+      if (!document.hidden) scheduleSweep();
     };
 
     const handleShimmerEnd = () => {
       shimmer.classList.remove('is-shimmering');
-      scheduleShimmer();
+      if (!document.hidden) scheduleShimmer();
+    };
+
+    const handleVisibilityChange = () => {
+      window.clearTimeout(sweepTimer);
+      window.clearTimeout(shimmerTimer);
+
+      if (document.hidden) {
+        ambient.classList.add('is-paused');
+        sweep.classList.remove('is-sweeping');
+        shimmer.classList.remove('is-shimmering');
+        return;
+      }
+
+      ambient.classList.remove('is-paused');
+      scheduleSweep(true);
+      scheduleShimmer(true);
     };
 
     sweep.addEventListener('animationend', handleSweepEnd);
     shimmer.addEventListener('animationend', handleShimmerEnd);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     scheduleSweep(true);
     scheduleShimmer(true);
 
@@ -170,13 +197,14 @@ function AmbientLight() {
       window.clearTimeout(shimmerTimer);
       sweep.removeEventListener('animationend', handleSweepEnd);
       shimmer.removeEventListener('animationend', handleShimmerEnd);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       sweep.classList.remove('is-sweeping');
       shimmer.classList.remove('is-shimmering');
     };
   }, []);
 
   return (
-    <div className="ambient" aria-hidden="true">
+    <div ref={ambientRef} className="ambient" aria-hidden="true">
       <span className="aurora aurora--blue" style={AMBIENT_MOTION.blue} />
       <span className="aurora aurora--cyan" style={AMBIENT_MOTION.cyan} />
       <span className="aurora aurora--violet" style={AMBIENT_MOTION.violet} />
