@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
+import avatarUrl from './avatar.jpg';
 
 const PAGE_IDS = ['top', 'about', 'slices', 'contact'];
 
@@ -15,6 +16,60 @@ const HERO_ACTIONS = [
   { id: 'slices', number: '02', label: '我的切片', meta: 'FRAGMENTS', tone: 'violet' },
   { id: 'contact', number: '03', label: '联系方式', meta: 'CONNECT', tone: 'coral' }
 ];
+
+function randomBetween(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+const LIGHT_PALETTES = [
+  ['88, 120, 221', '229, 151, 99'],
+  ['126, 98, 205', '224, 116, 149'],
+  ['66, 137, 172', '210, 134, 88'],
+  ['91, 108, 194', '196, 103, 132'],
+  ['72, 143, 151', '218, 124, 102']
+];
+
+function createDriftStyle(minDuration, maxDuration, spread, palette) {
+  const duration = randomBetween(minDuration, maxDuration);
+  const point = () => `${randomBetween(-spread, spread).toFixed(1)}%`;
+
+  return {
+    '--drift-duration': `${duration.toFixed(1)}s`,
+    '--drift-delay': `-${randomBetween(0, duration).toFixed(1)}s`,
+    '--x0': point(),
+    '--y0': point(),
+    '--x1': point(),
+    '--y1': point(),
+    '--x2': point(),
+    '--y2': point(),
+    '--x3': point(),
+    '--y3': point(),
+    '--r0': `${randomBetween(-3, 3).toFixed(1)}deg`,
+    '--r1': `${randomBetween(-3, 3).toFixed(1)}deg`,
+    '--r2': `${randomBetween(-3, 3).toFixed(1)}deg`,
+    '--r3': `${randomBetween(-3, 3).toFixed(1)}deg`,
+    '--light-a': palette[0],
+    '--light-b': palette[1],
+    '--blob-a-w': `${randomBetween(34, 52).toFixed(1)}%`,
+    '--blob-a-h': `${randomBetween(28, 45).toFixed(1)}%`,
+    '--blob-a-x': `${randomBetween(20, 76).toFixed(1)}%`,
+    '--blob-a-y': `${randomBetween(20, 72).toFixed(1)}%`,
+    '--blob-b-w': `${randomBetween(22, 36).toFixed(1)}%`,
+    '--blob-b-h': `${randomBetween(18, 31).toFixed(1)}%`,
+    '--blob-b-x': `${randomBetween(18, 82).toFixed(1)}%`,
+    '--blob-b-y': `${randomBetween(24, 80).toFixed(1)}%`,
+    '--light-a-alpha': randomBetween(0.68, 0.84).toFixed(2),
+    '--light-b-alpha': randomBetween(0.48, 0.66).toFixed(2),
+    '--aurora-opacity': randomBetween(0.44, 0.57).toFixed(2)
+  };
+}
+
+const paletteIndex = Math.floor(Math.random() * LIGHT_PALETTES.length);
+const AMBIENT_MOTION = {
+  blue: createDriftStyle(31, 46, 15, LIGHT_PALETTES[paletteIndex]),
+  cyan: createDriftStyle(46, 68, 18, LIGHT_PALETTES[(paletteIndex + 3) % LIGHT_PALETTES.length]),
+  violet: createDriftStyle(37, 54, 14, LIGHT_PALETTES[(paletteIndex + 1 + Math.floor(Math.random() * 3)) % LIGHT_PALETTES.length])
+};
 
 const PAGE_TITLES = {
   top: '张刀宋｜未定态 / Between States',
@@ -47,13 +102,86 @@ function useHashPage() {
 }
 
 function AmbientLight() {
+  const sweepRef = useRef(null);
+  const shimmerRef = useRef(null);
+
+  useEffect(() => {
+    const sweep = sweepRef.current;
+    const shimmer = shimmerRef.current;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!sweep || !shimmer || reducedMotion) return undefined;
+
+    let sweepTimer;
+    let shimmerTimer;
+    let stopped = false;
+
+    const scheduleSweep = (firstRun = false) => {
+      const wait = firstRun ? randomBetween(3500, 9500) : randomBetween(16000, 34000);
+      sweepTimer = window.setTimeout(() => {
+        if (stopped) return;
+
+        const leftToRight = Math.random() > 0.5;
+        sweep.style.setProperty('--sweep-from-x', leftToRight ? '-28%' : '28%');
+        sweep.style.setProperty('--sweep-to-x', leftToRight ? '28%' : '-28%');
+        sweep.style.setProperty('--sweep-from-y', `${randomBetween(-12, 5).toFixed(1)}%`);
+        sweep.style.setProperty('--sweep-to-y', `${randomBetween(-4, 13).toFixed(1)}%`);
+        sweep.style.setProperty('--sweep-rotate', `${randomBetween(-5, 5).toFixed(1)}deg`);
+        sweep.style.setProperty('--sweep-duration', `${randomBetween(7, 10.5).toFixed(1)}s`);
+        sweep.style.setProperty('--sweep-peak', randomBetween(0.34, 0.48).toFixed(2));
+        sweep.classList.add('is-sweeping');
+      }, wait);
+    };
+
+    const scheduleShimmer = (firstRun = false) => {
+      const wait = firstRun ? randomBetween(7000, 14000) : randomBetween(19000, 38000);
+      shimmerTimer = window.setTimeout(() => {
+        if (stopped) return;
+
+        const leftToRight = Math.random() > 0.5;
+        shimmer.style.setProperty('--shimmer-from-x', leftToRight ? '-18%' : '18%');
+        shimmer.style.setProperty('--shimmer-to-x', leftToRight ? '18%' : '-18%');
+        shimmer.style.setProperty('--shimmer-y', `${randomBetween(-9, 10).toFixed(1)}%`);
+        shimmer.style.setProperty('--shimmer-rotate', `${randomBetween(-5, 5).toFixed(1)}deg`);
+        shimmer.style.setProperty('--shimmer-duration', `${randomBetween(8.5, 12.5).toFixed(1)}s`);
+        shimmer.style.setProperty('--shimmer-peak', randomBetween(0.2, 0.3).toFixed(2));
+        shimmer.classList.add('is-shimmering');
+      }, wait);
+    };
+
+    const handleSweepEnd = () => {
+      sweep.classList.remove('is-sweeping');
+      scheduleSweep();
+    };
+
+    const handleShimmerEnd = () => {
+      shimmer.classList.remove('is-shimmering');
+      scheduleShimmer();
+    };
+
+    sweep.addEventListener('animationend', handleSweepEnd);
+    shimmer.addEventListener('animationend', handleShimmerEnd);
+    scheduleSweep(true);
+    scheduleShimmer(true);
+
+    return () => {
+      stopped = true;
+      window.clearTimeout(sweepTimer);
+      window.clearTimeout(shimmerTimer);
+      sweep.removeEventListener('animationend', handleSweepEnd);
+      shimmer.removeEventListener('animationend', handleShimmerEnd);
+      sweep.classList.remove('is-sweeping');
+      shimmer.classList.remove('is-shimmering');
+    };
+  }, []);
+
   return (
     <div className="ambient" aria-hidden="true">
-      <span className="aurora aurora--blue" />
-      <span className="aurora aurora--cyan" />
-      <span className="aurora aurora--violet" />
-      <span className="aurora aurora--coral" />
-      <span className="aurora aurora--amber" />
+      <span className="aurora aurora--blue" style={AMBIENT_MOTION.blue} />
+      <span className="aurora aurora--cyan" style={AMBIENT_MOTION.cyan} />
+      <span className="aurora aurora--violet" style={AMBIENT_MOTION.violet} />
+      <span ref={shimmerRef} className="aurora aurora--coral" />
+      <span ref={sweepRef} className="aurora aurora--amber" />
       <span className="ambient__grid" />
     </div>
   );
@@ -116,12 +244,8 @@ function Hero() {
       </div>
 
       <div className="hero__stage">
-        <div className="portrait" role="img" aria-label="头像待补">
-          <div className="portrait__surface">
-            <span className="portrait__mark" aria-hidden="true">＋</span>
-            <strong>头像待补</strong>
-            <span>PORTRAIT / PENDING</span>
-          </div>
+        <div className="portrait">
+          <img className="portrait__image" src={avatarUrl} alt="张刀宋的头像" />
         </div>
 
         <div className="identity">
@@ -152,7 +276,7 @@ function Hero() {
 function DetailShell({ page, index, label, title, children }) {
   return (
     <section className={`view detail detail--${page} view--enter`} data-view={page} aria-labelledby={`${page}-title`}>
-      <div className="detail__shell">
+      <div className="detail__shell" data-index={index}>
         <a className="back-link" href="#top"><span aria-hidden="true">←</span> 返回首页</a>
 
         <header className="detail__heading">

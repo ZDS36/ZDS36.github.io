@@ -42,6 +42,9 @@ for (const route of ['top', 'about', 'slices', 'contact']) {
 }
 
 requireMarker(sourceJsx, 'main.scrollTop = 0', 'Route scroll reset');
+requireMarker(sourceJsx, '<a className="back-link" href="#top">', 'Visible return link');
+requireMarker(sourceJsx, "import avatarUrl from './avatar.jpg'", 'Avatar source');
+requireMarker(sourceJsx, 'className="portrait__image"', 'Avatar image');
 
 for (const cssMarker of [
   '.liquid-action',
@@ -53,6 +56,15 @@ for (const cssMarker of [
   '.aurora--amber',
   '--rose: #c96f88',
   '--copper: #c8875c',
+  "feTurbulence type='fractalNoise'",
+  '@keyframes micro-drift',
+  '@keyframes ambient-drift',
+  '@keyframes light-sweep',
+  '@keyframes surface-shimmer',
+  'animation: ambient-drift var(--drift-duration',
+  '.aurora--amber.is-sweeping',
+  '.aurora--coral.is-shimmering',
+  'position: fixed',
   'route-enter 240ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards',
   'overflow-x: hidden',
   '@media (prefers-reduced-motion: reduce)'
@@ -72,13 +84,13 @@ for (const developmentMarker of ['/main.jsx', '@vite/client', 'localhost']) {
 
 const assetDirectory = path.join(buildRoot, 'assets');
 const assetNames = (await readdir(assetDirectory)).sort();
-const expectedAssetNames = ['site.css', 'site.js'];
+const expectedAssetNames = ['site.css', 'site.jpg', 'site.js'];
 
 if (JSON.stringify(assetNames) !== JSON.stringify(expectedAssetNames)) {
   throw new Error(`Unexpected production assets: ${assetNames.join(', ')}`);
 }
 
-for (const relativePath of ['.site-build/index.html', '.site-build/assets/site.js', '.site-build/assets/site.css']) {
+for (const relativePath of ['.site-build/index.html', '.site-build/assets/site.js', '.site-build/assets/site.css', '.site-build/assets/site.jpg']) {
   const fileStat = await stat(path.join(repositoryRoot, relativePath));
   if (!fileStat.isFile() || fileStat.size < 64) {
     throw new Error(`Production file is missing or unexpectedly small: ${relativePath}`);

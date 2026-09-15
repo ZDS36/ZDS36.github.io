@@ -8,7 +8,8 @@ const buildRoot = path.join(repositoryRoot, '.site-build');
 const files = [
   ['index.html', 'index.html'],
   [path.join('assets', 'site.js'), path.join('assets', 'site.js')],
-  [path.join('assets', 'site.css'), path.join('assets', 'site.css')]
+  [path.join('assets', 'site.css'), path.join('assets', 'site.css')],
+  [path.join('assets', 'site.jpg'), path.join('assets', 'site.jpg')]
 ];
 
 function assertInside(base, candidate, label) {
@@ -50,4 +51,4 @@ for (const [sourceRelative, destinationRelative] of files) {
   await copyFile(source, destination);
 }
 
-console.log('Validated build and updated the three GitHub Pages files.');
+console.log('Validated build and updated the GitHub Pages files.');
