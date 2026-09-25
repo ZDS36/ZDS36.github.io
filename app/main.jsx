@@ -1,86 +1,45 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import avatarUrl from './avatar.jpg';
 
-const PAGE_IDS = ['top', 'about', 'slices', 'contact'];
+const PAGE_IDS = ['top', 'works', 'work-site', 'work-dashboard', 'slices', 'about', 'contact'];
 
 const NAV_ITEMS = [
   { id: 'top', label: '首页' },
-  { id: 'about', label: '关于' },
-  { id: 'slices', label: '切片' }
+  { id: 'works', label: '作品' },
+  { id: 'slices', label: '切片' },
+  { id: 'about', label: '关于' }
 ];
 
-const HERO_ACTIONS = [
-  { id: 'about', number: '01', label: '关于我', meta: 'PROFILE', tone: 'blue' },
-  { id: 'slices', number: '02', label: '我的切片', meta: 'FRAGMENTS', tone: 'violet' },
-  { id: 'contact', number: '03', label: '联系方式', meta: 'CONNECT', tone: 'coral' }
+const WORKS = [
+  {
+    id: 'work-site',
+    number: '01',
+    title: '未定态',
+    subtitle: '个人网站',
+    meta: 'WEB / 2026',
+    summary: '围绕个人表达、点击式导航与响应式体验持续打磨的数字空间。',
+    decision: '让内容承担主角，动效只负责连接页面与情绪。',
+    tone: 'blue'
+  },
+  {
+    id: 'work-dashboard',
+    number: '02',
+    title: '课程面板',
+    subtitle: '实用工具',
+    meta: 'TOOL / 2026',
+    summary: '把课程信息查看与操作流程整理进一个更清楚的本地网页面板。',
+    decision: '把复杂流程收进界面，让重要状态一眼可见。',
+    tone: 'coral'
+  }
 ];
-
-function randomBetween(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
-const LIGHT_PALETTES = [
-  ['88, 120, 221', '229, 151, 99'],
-  ['126, 98, 205', '224, 116, 149'],
-  ['66, 137, 172', '210, 134, 88'],
-  ['91, 108, 194', '196, 103, 132'],
-  ['72, 143, 151', '218, 124, 102']
-];
-
-function createDriftStyle(minDuration, maxDuration, spread, palette, minOpacity, maxOpacity) {
-  const duration = randomBetween(minDuration, maxDuration);
-  const point = () => `${randomBetween(-spread, spread).toFixed(1)}%`;
-  const lowOpacity = randomBetween(minOpacity, Math.max(minOpacity, maxOpacity - 0.08));
-  const highOpacity = randomBetween(lowOpacity + 0.05, maxOpacity);
-  const breathDuration = randomBetween(17, 29);
-
-  return {
-    '--drift-duration': `${duration.toFixed(1)}s`,
-    '--drift-delay': `-${randomBetween(0, duration).toFixed(1)}s`,
-    '--x0': point(),
-    '--y0': point(),
-    '--x1': point(),
-    '--y1': point(),
-    '--x2': point(),
-    '--y2': point(),
-    '--x3': point(),
-    '--y3': point(),
-    '--r0': `${randomBetween(-3, 3).toFixed(1)}deg`,
-    '--r1': `${randomBetween(-3, 3).toFixed(1)}deg`,
-    '--r2': `${randomBetween(-3, 3).toFixed(1)}deg`,
-    '--r3': `${randomBetween(-3, 3).toFixed(1)}deg`,
-    '--light-a': palette[0],
-    '--light-b': palette[1],
-    '--blob-a-w': `${randomBetween(34, 52).toFixed(1)}%`,
-    '--blob-a-h': `${randomBetween(28, 45).toFixed(1)}%`,
-    '--blob-a-x': `${randomBetween(20, 76).toFixed(1)}%`,
-    '--blob-a-y': `${randomBetween(20, 72).toFixed(1)}%`,
-    '--blob-b-w': `${randomBetween(22, 36).toFixed(1)}%`,
-    '--blob-b-h': `${randomBetween(18, 31).toFixed(1)}%`,
-    '--blob-b-x': `${randomBetween(18, 82).toFixed(1)}%`,
-    '--blob-b-y': `${randomBetween(24, 80).toFixed(1)}%`,
-    '--light-a-alpha': randomBetween(0.68, 0.84).toFixed(2),
-    '--light-b-alpha': randomBetween(0.48, 0.66).toFixed(2),
-    '--aurora-opacity': highOpacity.toFixed(2),
-    '--opacity-low': lowOpacity.toFixed(2),
-    '--opacity-high': highOpacity.toFixed(2),
-    '--opacity-mid': ((lowOpacity + highOpacity) / 2).toFixed(2),
-    '--breath-duration': `${breathDuration.toFixed(1)}s`,
-    '--breath-delay': `-${randomBetween(0, breathDuration).toFixed(1)}s`
-  };
-}
-
-const paletteIndex = Math.floor(Math.random() * LIGHT_PALETTES.length);
-const AMBIENT_MOTION = {
-  blue: createDriftStyle(23, 34, 15, LIGHT_PALETTES[paletteIndex], 0.43, 0.58),
-  cyan: createDriftStyle(34, 49, 18, LIGHT_PALETTES[(paletteIndex + 3) % LIGHT_PALETTES.length], 0.14, 0.24),
-  violet: createDriftStyle(27, 40, 14, LIGHT_PALETTES[(paletteIndex + 1 + Math.floor(Math.random() * 3)) % LIGHT_PALETTES.length], 0.4, 0.54)
-};
 
 const PAGE_TITLES = {
   top: '张刀宋｜未定态 / Between States',
+  works: '作品｜张刀宋',
+  'work-site': '未定态个人网站｜张刀宋',
+  'work-dashboard': '课程面板｜张刀宋',
   about: '关于我｜张刀宋',
   slices: '我的切片｜张刀宋',
   contact: '联系方式｜张刀宋'
@@ -95,14 +54,16 @@ function useHashPage() {
   const [page, setPage] = useState(pageFromHash);
 
   useEffect(() => {
-    const syncPage = () => setPage(pageFromHash());
-    const requested = window.location.hash.slice(1);
-
-    if (requested && !PAGE_IDS.includes(requested)) {
-      window.history.replaceState(null, '', '#top');
-    }
+    const syncPage = () => {
+      const requested = window.location.hash.slice(1);
+      if (requested && !PAGE_IDS.includes(requested)) {
+        window.history.replaceState(null, '', '#top');
+      }
+      setPage(pageFromHash());
+    };
 
     window.addEventListener('hashchange', syncPage);
+    syncPage();
     return () => window.removeEventListener('hashchange', syncPage);
   }, []);
 
@@ -111,111 +72,29 @@ function useHashPage() {
 
 function AmbientLight() {
   const ambientRef = useRef(null);
-  const sweepRef = useRef(null);
-  const shimmerRef = useRef(null);
 
   useEffect(() => {
     const ambient = ambientRef.current;
-    const sweep = sweepRef.current;
-    const shimmer = shimmerRef.current;
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (!ambient || !sweep || !shimmer || reducedMotion) return undefined;
-
-    let sweepTimer;
-    let shimmerTimer;
-    let stopped = false;
-
-    const scheduleSweep = (firstRun = false) => {
-      const wait = firstRun ? randomBetween(3500, 9500) : randomBetween(16000, 34000);
-      sweepTimer = window.setTimeout(() => {
-        if (stopped) return;
-
-        const leftToRight = Math.random() > 0.5;
-        sweep.style.setProperty('--sweep-from-x', leftToRight ? '-28%' : '28%');
-        sweep.style.setProperty('--sweep-to-x', leftToRight ? '28%' : '-28%');
-        sweep.style.setProperty('--sweep-from-y', `${randomBetween(-12, 5).toFixed(1)}%`);
-        sweep.style.setProperty('--sweep-to-y', `${randomBetween(-4, 13).toFixed(1)}%`);
-        sweep.style.setProperty('--sweep-rotate', `${randomBetween(-5, 5).toFixed(1)}deg`);
-        sweep.style.setProperty('--sweep-duration', `${randomBetween(7, 10.5).toFixed(1)}s`);
-        sweep.style.setProperty('--sweep-peak', randomBetween(0.34, 0.48).toFixed(2));
-        sweep.classList.add('is-sweeping');
-      }, wait);
+    const syncVisibility = () => {
+      ambient.classList.toggle('is-paused', document.hidden);
     };
 
-    const scheduleShimmer = (firstRun = false) => {
-      const wait = firstRun ? randomBetween(7000, 14000) : randomBetween(19000, 38000);
-      shimmerTimer = window.setTimeout(() => {
-        if (stopped) return;
-
-        const leftToRight = Math.random() > 0.5;
-        shimmer.style.setProperty('--shimmer-from-x', leftToRight ? '-18%' : '18%');
-        shimmer.style.setProperty('--shimmer-to-x', leftToRight ? '18%' : '-18%');
-        shimmer.style.setProperty('--shimmer-y', `${randomBetween(-9, 10).toFixed(1)}%`);
-        shimmer.style.setProperty('--shimmer-rotate', `${randomBetween(-5, 5).toFixed(1)}deg`);
-        shimmer.style.setProperty('--shimmer-duration', `${randomBetween(8.5, 12.5).toFixed(1)}s`);
-        shimmer.style.setProperty('--shimmer-peak', randomBetween(0.2, 0.3).toFixed(2));
-        shimmer.classList.add('is-shimmering');
-      }, wait);
-    };
-
-    const handleSweepEnd = () => {
-      sweep.classList.remove('is-sweeping');
-      if (!document.hidden) scheduleSweep();
-    };
-
-    const handleShimmerEnd = () => {
-      shimmer.classList.remove('is-shimmering');
-      if (!document.hidden) scheduleShimmer();
-    };
-
-    const handleVisibilityChange = () => {
-      window.clearTimeout(sweepTimer);
-      window.clearTimeout(shimmerTimer);
-
-      if (document.hidden) {
-        ambient.classList.add('is-paused');
-        sweep.classList.remove('is-sweeping');
-        shimmer.classList.remove('is-shimmering');
-        return;
-      }
-
-      ambient.classList.remove('is-paused');
-      scheduleSweep(true);
-      scheduleShimmer(true);
-    };
-
-    sweep.addEventListener('animationend', handleSweepEnd);
-    shimmer.addEventListener('animationend', handleShimmerEnd);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    scheduleSweep(true);
-    scheduleShimmer(true);
-
-    return () => {
-      stopped = true;
-      window.clearTimeout(sweepTimer);
-      window.clearTimeout(shimmerTimer);
-      sweep.removeEventListener('animationend', handleSweepEnd);
-      shimmer.removeEventListener('animationend', handleShimmerEnd);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      sweep.classList.remove('is-sweeping');
-      shimmer.classList.remove('is-shimmering');
-    };
+    syncVisibility();
+    document.addEventListener('visibilitychange', syncVisibility);
+    return () => document.removeEventListener('visibilitychange', syncVisibility);
   }, []);
 
   return (
     <div ref={ambientRef} className="ambient" aria-hidden="true">
-      <span className="aurora aurora--blue" style={AMBIENT_MOTION.blue} />
-      <span className="aurora aurora--cyan" style={AMBIENT_MOTION.cyan} />
-      <span className="aurora aurora--violet" style={AMBIENT_MOTION.violet} />
-      <span ref={shimmerRef} className="aurora aurora--coral" />
-      <span ref={sweepRef} className="aurora aurora--amber" />
-      <span className="ambient__grid" />
+      <span className="aurora aurora--blue" />
+      <span className="aurora aurora--violet" />
     </div>
   );
 }
 
 function SiteHeader({ page }) {
+  const activePage = page.startsWith('work-') ? 'works' : page;
+
   return (
     <header className="site-header">
       <a className="brand" href="#top" aria-label="返回首页">
@@ -228,7 +107,7 @@ function SiteHeader({ page }) {
           <a
             key={item.id}
             href={`#${item.id}`}
-            aria-current={page === item.id ? 'page' : undefined}
+            aria-current={activePage === item.id ? 'page' : undefined}
           >
             {item.label}
           </a>
@@ -247,170 +126,263 @@ function SiteHeader({ page }) {
   );
 }
 
-function LiquidAction({ action }) {
+function ArrowLink({ href, children, className = '' }) {
   return (
-    <a className={`liquid-action liquid-action--${action.tone}`} href={`#${action.id}`}>
-      <span className="liquid-action__number">{action.number}</span>
-      <span className="liquid-action__copy">
-        <strong>{action.label}</strong>
-        <small>{action.meta}</small>
-      </span>
-      <span className="liquid-action__arrow" aria-hidden="true">→</span>
+    <a className={`arrow-link ${className}`.trim()} href={href}>
+      <span>{children}</span>
+      <span className="arrow-link__icon" aria-hidden="true">↗</span>
     </a>
   );
 }
 
 function Hero() {
   return (
-    <section className="view hero view--enter" data-view="top" aria-labelledby="hero-title">
-      <span className="hero__axis hero__axis--left" aria-hidden="true" />
-      <span className="hero__axis hero__axis--right" aria-hidden="true" />
+    <section className="view home" data-view="top" aria-labelledby="hero-title">
+      <div className="home__intro">
+        <p className="page-kicker"><span>00</span> / PERSONAL ARCHIVE</p>
 
-      <div className="hero__rail hero__rail--left" aria-hidden="true">
-        <span>PERSONAL SITE</span>
-        <span>INDEX / 00</span>
-      </div>
-
-      <div className="hero__stage">
-        <div className="portrait">
-          <img className="portrait__image" src={avatarUrl} alt="张刀宋的头像" />
+        <div className="home__identity">
+          <div className="home__portrait">
+            <img className="portrait__image" src={avatarUrl} alt="张刀宋的头像" />
+          </div>
+          <div>
+            <p className="home__state"><i aria-hidden="true" /> STATUS / OPEN</p>
+            <h1 id="hero-title" tabIndex="-1">张刀宋</h1>
+          </div>
         </div>
 
-        <div className="identity">
-          <p className="eyebrow">PERSONAL ARCHIVE · STATUS / OPEN</p>
-          <h1 id="hero-title" tabIndex="-1">张刀宋</h1>
-          <span className="signature-line" aria-hidden="true" />
-          <p className="intro-placeholder">[ 个人简介待补 ]</p>
+        <div className="home__statement">
+          <p>把正在做的东西，<br /><em>认真地留下来。</em></p>
+          <span>这里收集网页、工具与过程中的判断。内容仍在生长，但每一项都来自真实完成的工作。</span>
+        </div>
+
+        <div className="home__actions">
+          <ArrowLink href="#works">查看作品</ArrowLink>
+          <a className="text-link" href="#about">关于这个空间 <span aria-hidden="true">→</span></a>
         </div>
       </div>
 
-      <nav className="liquid-nav" aria-label="页面入口">
-        {HERO_ACTIONS.map((action) => <LiquidAction key={action.id} action={action} />)}
-      </nav>
+      <a className="featured-work" href="#work-site" aria-label="查看精选作品：未定态个人网站">
+        <div className="featured-work__visual" aria-hidden="true">
+          <span className="featured-work__orb" />
+          <span className="featured-work__name">未<br />定态</span>
+          <span className="featured-work__index">01</span>
+          <span className="featured-work__caption">BETWEEN STATES / VOL. 01</span>
+          <span className="featured-work__seal">未完待续</span>
+        </div>
+        <div className="featured-work__copy">
+          <span>FEATURED / 01</span>
+          <div>
+            <h2>未定态 · 个人网站</h2>
+            <p>一次关于内容、秩序与个人表达的持续设计。</p>
+          </div>
+          <span className="featured-work__arrow" aria-hidden="true">↗</span>
+        </div>
+      </a>
 
-      <div className="hero__foot" aria-label="站点状态">
-        <span className="status-line"><i aria-hidden="true" /> AVAILABLE / OPEN</span>
-        <span>CONTENT / PENDING</span>
-      </div>
-
-      <div className="hero__rail hero__rail--right" aria-hidden="true">
-        <span>UNRESOLVED FORM</span>
-        <span>BETWEEN STATES</span>
+      <div className="home__foot">
+        <p><span>NOW</span> 正在重做这个网站</p>
+        <p><span>FOCUS</span> WEB · TOOLS · INTERACTION</p>
       </div>
     </section>
   );
 }
 
-function DetailShell({ page, index, label, title, children }) {
+function PageHeader({ index, label, title, intro }) {
   return (
-    <section className={`view detail detail--${page} view--enter`} data-view={page} aria-labelledby={`${page}-title`}>
-      <div className="detail__shell" data-index={index}>
-        <a className="back-link" href="#top"><span aria-hidden="true">←</span> 返回首页</a>
+    <header className="page-heading">
+      <p className="page-kicker"><span>{index}</span> / {label}</p>
+      <h1 tabIndex="-1">{title}</h1>
+      {intro && <p className="page-heading__intro">{intro}</p>}
+    </header>
+  );
+}
 
-        <header className="detail__heading">
-          <p><span>{index}</span> / {label}</p>
-          <h1 id={`${page}-title`} tabIndex="-1">{title}</h1>
-        </header>
-
-        <div className="detail__content">{children}</div>
-
-        <footer className="detail__footer">
-          <span>张刀宋</span>
-          <span>BETWEEN STATES / {index}</span>
-        </footer>
+function WorkCard({ work }) {
+  return (
+    <a className={`work-card work-card--${work.tone}`} href={`#${work.id}`}>
+      <div className="work-card__visual" aria-hidden="true">
+        <span className="work-card__number">{work.number}</span>
+        <span className="work-card__shape" />
+        <span className="work-card__word">{work.title}</span>
       </div>
+      <div className="work-card__copy">
+        <p>{work.meta}</p>
+        <h2>{work.title}<small>{work.subtitle}</small></h2>
+        <span>{work.summary}</span>
+        <i aria-hidden="true">↗</i>
+      </div>
+    </a>
+  );
+}
+
+function WorksView() {
+  return (
+    <section className="view page works-page" data-view="works" aria-label="作品">
+      <PageHeader
+        index="01"
+        label="SELECTED WORKS"
+        title="作品"
+        intro="少量、真实、能够完整讲清楚的项目。"
+      />
+      <div className="works-grid">
+        {WORKS.map((work) => <WorkCard key={work.id} work={work} />)}
+      </div>
+      <footer className="page-foot"><span>02 PROJECTS</span><span>MORE / IN PROGRESS</span></footer>
+    </section>
+  );
+}
+
+function WorkDetail({ work, nextWork }) {
+  const isSite = work.id === 'work-site';
+  const facts = isSite
+    ? [
+        ['目标', '让个人表达、作品入口与浏览体验形成一个整体。'],
+        ['负责', '信息架构、界面设计、前端实现与响应式适配。'],
+        ['方式', 'React + CSS，保留轻量 Hash 导航和无障碍基础。']
+      ]
+    : [
+        ['目标', '把分散的课程操作与状态集中到一个本地界面。'],
+        ['负责', '流程整理、界面实现、状态反馈与安全发布。'],
+        ['原则', '真实账户与公开版本隔离，运行数据不进入公开副本。']
+      ];
+
+  return (
+    <section className="view page work-detail" data-view={work.id} aria-label={work.title}>
+      <a className="back-link-v2" href="#works"><span aria-hidden="true">←</span> 返回作品</a>
+      <header className="work-detail__hero">
+        <div>
+          <p className="page-kicker"><span>{work.number}</span> / {work.meta}</p>
+          <h1 tabIndex="-1">{work.title}</h1>
+          <p>{work.summary}</p>
+        </div>
+        <div className={`work-detail__visual work-detail__visual--${work.tone}`} aria-hidden="true">
+          <span>{work.number}</span>
+          <strong>{work.subtitle}</strong>
+          <i />
+        </div>
+      </header>
+
+      <div className="work-detail__body">
+        <blockquote>“{work.decision}”</blockquote>
+        <dl>
+          {facts.map(([label, value]) => (
+            <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+          ))}
+        </dl>
+      </div>
+
+      <a className="next-work" href={`#${nextWork.id}`}>
+        <span>NEXT PROJECT / {nextWork.number}</span>
+        <strong>{nextWork.title}</strong>
+        <i aria-hidden="true">→</i>
+      </a>
+    </section>
+  );
+}
+
+function SlicesView() {
+  const slices = [
+    ['09.25', '此刻', '正在重新整理这个网站，让真实内容成为视觉中心。'],
+    ['09.24', '选择', '保留点击式页面结构，让每次进入都像翻开一页档案。'],
+    ['长期', '原则', '只展示确认过的经历与作品，不用漂亮话填满空白。']
+  ];
+
+  return (
+    <section className="view page slices-page" data-view="slices" aria-label="我的切片">
+      <PageHeader index="02" label="FRAGMENTS" title="切片" intro="一些正在发生的事，以及我愿意留下来的判断。" />
+      <ol className="journal-list">
+        {slices.map(([date, title, copy], index) => (
+          <li key={title}>
+            <span>0{index + 1}</span>
+            <time>{date}</time>
+            <h2>{title}</h2>
+            <p>{copy}</p>
+          </li>
+        ))}
+      </ol>
+      <footer className="page-foot"><span>UPDATED / 2026</span><span>BETWEEN STATES</span></footer>
     </section>
   );
 }
 
 function AboutView() {
   return (
-    <DetailShell page="about" index="01" label="ABOUT" title="关于我">
-      <p className="detail__lead">[ 个人简介待补 ]</p>
-      <dl className="info-grid">
-        <div><dt>当前身份</dt><dd>[ 待补 ]</dd></div>
-        <div><dt>所在城市</dt><dd>[ 待补 ]</dd></div>
-        <div><dt>正在关注</dt><dd>[ 待补 ]</dd></div>
-      </dl>
-    </DetailShell>
-  );
-}
-
-function SlicesView() {
-  const slices = [
-    ['此刻', '[ 当前状态或近况待补 ]'],
-    ['来路', '[ 经历或背景待补 ]'],
-    ['偏好', '[ 兴趣或关注方向待补 ]']
-  ];
-
-  return (
-    <DetailShell page="slices" index="02" label="SLICES" title="我的切片">
-      <ol className="slice-list">
-        {slices.map(([title, copy], index) => (
-          <li key={title}>
-            <span className="slice-list__number">0{index + 1}</span>
-            <div><h2>{title}</h2><p>{copy}</p></div>
-          </li>
-        ))}
-      </ol>
-    </DetailShell>
+    <section className="view page about-page" data-view="about" aria-label="关于我">
+      <PageHeader index="03" label="ABOUT" title="关于" />
+      <div className="about-layout">
+        <figure className="about-layout__image">
+          <img src={avatarUrl} alt="本站使用的花朵图像" />
+          <figcaption>AN OPEN ARCHIVE / 03</figcaption>
+        </figure>
+        <div className="about-layout__story">
+          <p className="about-layout__lead">这里是张刀宋的<br />个人数字空间。</p>
+          <div className="about-layout__copy">
+            <p>我用它收集正在完成的网页、工具与视觉实验，也记录过程里值得留下的判断。</p>
+            <p>比起堆满标签，我更愿意让具体作品说明问题。这里会持续更新，但不会用未经确认的经历填充页面。</p>
+          </div>
+          <dl className="about-facts">
+            <div><dt>现在</dt><dd>持续整理个人项目</dd></div>
+            <div><dt>本站关注</dt><dd>网页设计 · 实用工具 · 交互体验</dd></div>
+            <div><dt>更新方式</dt><dd>少量、真实、慢慢完善</dd></div>
+          </dl>
+        </div>
+      </div>
+      <footer className="page-foot"><span>PERSONAL ARCHIVE</span><span>OPEN / EVOLVING</span></footer>
+    </section>
   );
 }
 
 function ContactView() {
-  const contacts = [
-    ['邮箱', '[ 待补 ]'],
-    ['社交平台', '[ 待补 ]'],
-    ['其他方式', '[ 待补 ]']
-  ];
-
   return (
-    <DetailShell page="contact" index="03" label="CONTACT" title="联系方式">
-      <p className="detail__lead">[ 公开联系方式待补 ]</p>
-      <dl className="contact-grid">
-        {contacts.map(([label, value]) => (
-          <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
-        ))}
-      </dl>
-    </DetailShell>
+    <section className="view page contact-page" data-view="contact" aria-label="联系方式">
+      <PageHeader index="04" label="CONTACT" title="联系" intro="目前只展示已经确认公开的渠道。" />
+      <div className="contact-panel">
+        <a href="https://github.com/ZDS36" target="_blank" rel="noreferrer">
+          <span>GITHUB</span><strong>ZDS36</strong><i aria-hidden="true">↗</i>
+        </a>
+        <div>
+          <span>EMAIL</span><strong>公开地址暂未提供</strong><i>—</i>
+        </div>
+      </div>
+      <p className="contact-note">新的公开联系方式确认后，再补进这里。</p>
+      <footer className="page-foot"><span>CONTACT / 04</span><span>张刀宋</span></footer>
+    </section>
   );
 }
 
 function CurrentView({ page }) {
-  if (page === 'about') return <AboutView />;
+  if (page === 'works') return <WorksView />;
+  if (page === 'work-site') return <WorkDetail work={WORKS[0]} nextWork={WORKS[1]} />;
+  if (page === 'work-dashboard') return <WorkDetail work={WORKS[1]} nextWork={WORKS[0]} />;
   if (page === 'slices') return <SlicesView />;
+  if (page === 'about') return <AboutView />;
   if (page === 'contact') return <ContactView />;
   return <Hero />;
 }
 
 function App() {
   const page = useHashPage();
-  const isFirstRender = useRef(true);
+  const mainRef = useRef(null);
+  const worksScroll = useRef(0);
+  const previousPage = useRef(page);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.title = PAGE_TITLES[page];
 
-    const main = document.getElementById('main-content');
-    if (main) {
-      main.scrollTop = 0;
-      main.scrollLeft = 0;
-    }
-
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return undefined;
-    }
-
-    const frame = window.requestAnimationFrame(() => {
-      document.querySelector(`[data-view="${page}"] h1`)?.focus({ preventScroll: true });
-    });
-
-    return () => window.cancelAnimationFrame(frame);
+    if (previousPage.current === page) return;
+    const main = mainRef.current;
+    main.scrollTop = page === 'works' && previousPage.current.startsWith('work-')
+      ? worksScroll.current
+      : 0;
+    main.scrollLeft = 0;
+    main.querySelector('h1')?.focus({ preventScroll: true });
+    previousPage.current = page;
   }, [page]);
 
   const focusMain = (event) => {
     event.preventDefault();
-    document.getElementById('main-content')?.focus({ preventScroll: true });
+    mainRef.current.focus({ preventScroll: true });
   };
 
   return (
@@ -418,7 +390,15 @@ function App() {
       <a className="skip-link" href="#main-content" onClick={focusMain}>跳到主要内容</a>
       <AmbientLight />
       <SiteHeader page={page} />
-      <main id="main-content" className="site-main" tabIndex="-1">
+      <main
+        ref={mainRef}
+        id="main-content"
+        className="site-main"
+        tabIndex="-1"
+        onScroll={(event) => {
+          if (page === 'works') worksScroll.current = event.currentTarget.scrollTop;
+        }}
+      >
         <CurrentView key={page} page={page} />
       </main>
     </div>

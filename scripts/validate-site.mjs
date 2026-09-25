@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 const repositoryRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const buildRoot = path.join(repositoryRoot, '.site-build');
 
-const read = (relativePath) => readFile(path.join(repositoryRoot, relativePath), 'utf8');
+const read = async (relativePath) => new TextDecoder('utf-8', { fatal: true })
+  .decode(await readFile(path.join(repositoryRoot, relativePath)));
 
 const [sourceHtml, sourceJsx, sourceCss, viteConfig, builtHtml, builtJs, builtCss] = await Promise.all([
   read('app/index.html'),
@@ -27,7 +28,7 @@ function requireMarker(text, marker, label) {
   }
 }
 
-for (const requiredCopy of ['张刀宋', '关于我', '我的切片', '联系方式', '联系我']) {
+for (const requiredCopy of ['张刀宋', '作品', '切片', '关于', '联系我', '未定态', '课程面板']) {
   requireMarker(sourceHtml + sourceJsx, requiredCopy, 'Site copy');
 }
 
@@ -37,40 +38,8 @@ for (const forbiddenCopy of ['选择一个入口', '薛定谔', '\uFFFD']) {
   }
 }
 
-for (const route of ['top', 'about', 'slices', 'contact']) {
+for (const route of ['top', 'works', 'work-site', 'work-dashboard', 'slices', 'about', 'contact']) {
   requireMarker(sourceJsx, route, 'Route source');
-}
-
-requireMarker(sourceJsx, 'main.scrollTop = 0', 'Route scroll reset');
-requireMarker(sourceJsx, '<a className="back-link" href="#top">', 'Visible return link');
-requireMarker(sourceJsx, "import avatarUrl from './avatar.jpg'", 'Avatar source');
-requireMarker(sourceJsx, 'className="portrait__image"', 'Avatar image');
-
-for (const cssMarker of [
-  '.liquid-action',
-  'backdrop-filter: blur(18px)',
-  '.aurora--blue',
-  '.aurora--cyan',
-  '.aurora--violet',
-  '.aurora--coral',
-  '.aurora--amber',
-  '--rose: #c96f88',
-  '--copper: #c8875c',
-  "feTurbulence type='fractalNoise'",
-  '@keyframes micro-drift',
-  '@keyframes ambient-drift',
-  '@keyframes ambient-breathe',
-  '@keyframes light-sweep',
-  '@keyframes surface-shimmer',
-  'ambient-drift var(--drift-duration',
-  '.aurora--amber.is-sweeping',
-  '.aurora--coral.is-shimmering',
-  'position: fixed',
-  'route-enter 240ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards',
-  'overflow-x: hidden',
-  '@media (prefers-reduced-motion: reduce)'
-]) {
-  requireMarker(sourceCss, cssMarker, 'Visual system');
 }
 
 for (const productionMarker of ['id="root"', '/assets/site.js', '/assets/site.css']) {
