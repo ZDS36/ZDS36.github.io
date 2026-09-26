@@ -50,24 +50,9 @@ function pageFromHash() {
   return PAGE_IDS.includes(requested) ? requested : 'top';
 }
 
-function useHashPage() {
-  const [page, setPage] = useState(pageFromHash);
-
-  useEffect(() => {
-    const syncPage = () => {
-      const requested = window.location.hash.slice(1);
-      if (requested && !PAGE_IDS.includes(requested)) {
-        window.history.replaceState(null, '', '#top');
-      }
-      setPage(pageFromHash());
-    };
-
-    window.addEventListener('hashchange', syncPage);
-    syncPage();
-    return () => window.removeEventListener('hashchange', syncPage);
-  }, []);
-
-  return page;
+function visualInViewport(element) {
+  const rect = element.getBoundingClientRect();
+  return rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
 }
 
 function AmbientLight() {
@@ -135,9 +120,20 @@ function ArrowLink({ href, children, className = '' }) {
   );
 }
 
-function Hero() {
+function WorkVisual({ work, className = '' }) {
   return (
-    <section className="view home" data-view="top" aria-labelledby="hero-title">
+    <div className={`work-visual work-visual--${work.tone} ${className}`.trim()} data-work-visual={work.id} aria-hidden="true">
+      <span className="work-visual__caption">{work.meta}</span>
+      <span className="work-visual__number">{work.number}</span>
+      <span className="work-visual__shape" />
+      <strong className="work-visual__title">{work.title}</strong>
+    </div>
+  );
+}
+
+function Hero({ sharedEntering }) {
+  return (
+    <section className={`view home${sharedEntering ? ' view--shared-enter' : ''}`} data-view="top" aria-labelledby="hero-title">
       <div className="home__intro">
         <p className="page-kicker"><span>00</span> / PERSONAL ARCHIVE</p>
 
@@ -163,13 +159,7 @@ function Hero() {
       </div>
 
       <a className="featured-work" href="#work-site" aria-label="查看精选作品：未定态个人网站">
-        <div className="featured-work__visual" aria-hidden="true">
-          <span className="featured-work__orb" />
-          <span className="featured-work__name">未<br />定态</span>
-          <span className="featured-work__index">01</span>
-          <span className="featured-work__caption">BETWEEN STATES / VOL. 01</span>
-          <span className="featured-work__seal">未完待续</span>
-        </div>
+        <WorkVisual work={WORKS[0]} className="featured-work__visual" />
         <div className="featured-work__copy">
           <span>FEATURED / 01</span>
           <div>
@@ -201,11 +191,7 @@ function PageHeader({ index, label, title, intro }) {
 function WorkCard({ work }) {
   return (
     <a className={`work-card work-card--${work.tone}`} href={`#${work.id}`}>
-      <div className="work-card__visual" aria-hidden="true">
-        <span className="work-card__number">{work.number}</span>
-        <span className="work-card__shape" />
-        <span className="work-card__word">{work.title}</span>
-      </div>
+      <WorkVisual work={work} className="work-card__visual" />
       <div className="work-card__copy">
         <p>{work.meta}</p>
         <h2>{work.title}<small>{work.subtitle}</small></h2>
@@ -216,9 +202,9 @@ function WorkCard({ work }) {
   );
 }
 
-function WorksView() {
+function WorksView({ sharedEntering }) {
   return (
-    <section className="view page works-page" data-view="works" aria-label="作品">
+    <section className={`view page works-page${sharedEntering ? ' view--shared-enter' : ''}`} data-view="works" aria-label="作品">
       <PageHeader
         index="01"
         label="SELECTED WORKS"
@@ -233,7 +219,7 @@ function WorksView() {
   );
 }
 
-function WorkDetail({ work, nextWork }) {
+function WorkDetail({ work, nextWork, backPage, sharedEntering }) {
   const isSite = work.id === 'work-site';
   const facts = isSite
     ? [
@@ -248,19 +234,15 @@ function WorkDetail({ work, nextWork }) {
       ];
 
   return (
-    <section className="view page work-detail" data-view={work.id} aria-label={work.title}>
-      <a className="back-link-v2" href="#works"><span aria-hidden="true">←</span> 返回作品</a>
+    <section className={`view page work-detail${sharedEntering ? ' view--shared-enter' : ''}`} data-view={work.id} aria-label={work.title}>
+      <a className="back-link-v2" href={`#${backPage}`}><span aria-hidden="true">←</span> 返回{backPage === 'top' ? '首页' : '作品'}</a>
       <header className="work-detail__hero">
         <div>
           <p className="page-kicker"><span>{work.number}</span> / {work.meta}</p>
           <h1 tabIndex="-1">{work.title}</h1>
           <p>{work.summary}</p>
         </div>
-        <div className={`work-detail__visual work-detail__visual--${work.tone}`} aria-hidden="true">
-          <span>{work.number}</span>
-          <strong>{work.subtitle}</strong>
-          <i />
-        </div>
+        <WorkVisual work={work} className="work-detail__visual" />
       </header>
 
       <div className="work-detail__body">
@@ -341,43 +323,144 @@ function ContactView() {
         <a href="https://github.com/ZDS36" target="_blank" rel="noreferrer">
           <span>GITHUB</span><strong>ZDS36</strong><i aria-hidden="true">↗</i>
         </a>
-        <div>
-          <span>EMAIL</span><strong>公开地址暂未提供</strong><i>—</i>
-        </div>
       </div>
-      <p className="contact-note">新的公开联系方式确认后，再补进这里。</p>
+      <p className="contact-note">邮箱暂未公开；新的公开联系方式确认后会更新。</p>
       <footer className="page-foot"><span>CONTACT / 04</span><span>张刀宋</span></footer>
     </section>
   );
 }
 
-function CurrentView({ page }) {
-  if (page === 'works') return <WorksView />;
-  if (page === 'work-site') return <WorkDetail work={WORKS[0]} nextWork={WORKS[1]} />;
-  if (page === 'work-dashboard') return <WorkDetail work={WORKS[1]} nextWork={WORKS[0]} />;
+function CurrentView({ page, backPage, sharedEntering }) {
+  if (page === 'works') return <WorksView sharedEntering={sharedEntering} />;
+  if (page === 'work-site') return <WorkDetail work={WORKS[0]} nextWork={WORKS[1]} backPage={backPage} sharedEntering={sharedEntering} />;
+  if (page === 'work-dashboard') return <WorkDetail work={WORKS[1]} nextWork={WORKS[0]} backPage={backPage} sharedEntering={sharedEntering} />;
   if (page === 'slices') return <SlicesView />;
   if (page === 'about') return <AboutView />;
   if (page === 'contact') return <ContactView />;
-  return <Hero />;
+  return <Hero sharedEntering={sharedEntering} />;
 }
 
 function App() {
-  const page = useHashPage();
+  const [page, setPage] = useState(pageFromHash);
   const mainRef = useRef(null);
-  const worksScroll = useRef(0);
+  const pageRef = useRef(page);
+  const sourceScroll = useRef({ top: 0, works: 0 });
+  const originRef = useRef(null);
+  const pendingRef = useRef(null);
+  const activeRef = useRef(null);
   const previousPage = useRef(page);
+
+  useEffect(() => {
+    const clearTransition = () => {
+      if (pendingRef.current) {
+        pendingRef.current.overlay.remove();
+        pendingRef.current = null;
+      }
+      const active = activeRef.current;
+      if (!active) return;
+      activeRef.current = null;
+      active.animation.cancel();
+      active.target.classList.remove('work-visual--hidden');
+      active.overlay.remove();
+    };
+
+    const syncPage = () => {
+      const requested = window.location.hash.slice(1);
+      if (requested && !PAGE_IDS.includes(requested)) {
+        window.history.replaceState(null, '', '#top');
+      }
+
+      const nextPage = pageFromHash();
+      const oldPage = pageRef.current;
+      if (nextPage === oldPage) return;
+      clearTransition();
+
+      const enteringWork = !oldPage.startsWith('work-') && nextPage.startsWith('work-');
+      const returningToSource = oldPage.startsWith('work-') && originRef.current?.workId === oldPage && originRef.current.page === nextPage;
+      if (enteringWork && (oldPage === 'top' || oldPage === 'works')) {
+        originRef.current = { page: oldPage, workId: nextPage };
+      } else if (oldPage.startsWith('work-') && nextPage.startsWith('work-')) {
+        originRef.current = null;
+      }
+
+      if ((enteringWork || returningToSource) && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const workId = enteringWork ? nextPage : oldPage;
+        const source = mainRef.current?.querySelector(`[data-work-visual="${workId}"]`);
+        if (source && visualInViewport(source)) {
+          const rect = source.getBoundingClientRect();
+          const overlay = source.cloneNode(true);
+          overlay.style.position = 'fixed';
+          overlay.style.left = `${rect.left}px`;
+          overlay.style.top = `${rect.top}px`;
+          overlay.style.width = `${rect.width}px`;
+          overlay.style.height = `${rect.height}px`;
+          overlay.style.zIndex = '1000';
+          overlay.style.pointerEvents = 'none';
+          overlay.setAttribute('aria-hidden', 'true');
+          document.body.append(overlay);
+          pendingRef.current = { overlay, from: rect, toPage: nextPage, workId };
+        }
+      }
+
+      setPage(nextPage);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) clearTransition();
+    };
+    window.addEventListener('hashchange', syncPage);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    syncPage();
+    return () => {
+      window.removeEventListener('hashchange', syncPage);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      clearTransition();
+    };
+  }, []);
 
   useLayoutEffect(() => {
     document.title = PAGE_TITLES[page];
 
-    if (previousPage.current === page) return;
     const main = mainRef.current;
-    main.scrollTop = page === 'works' && previousPage.current.startsWith('work-')
-      ? worksScroll.current
-      : 0;
-    main.scrollLeft = 0;
-    main.querySelector('h1')?.focus({ preventScroll: true });
-    previousPage.current = page;
+    if (previousPage.current !== page) {
+      const returning = previousPage.current.startsWith('work-') && originRef.current?.page === page;
+      main.scrollTop = returning && (page === 'top' || page === 'works') ? sourceScroll.current[page] : 0;
+      main.scrollLeft = 0;
+      main.querySelector('h1')?.focus({ preventScroll: true });
+      previousPage.current = page;
+    }
+    pageRef.current = page;
+
+    const pending = pendingRef.current;
+    if (!pending || pending.toPage !== page) return;
+    pendingRef.current = null;
+    const target = main.querySelector(`[data-work-visual="${pending.workId}"]`);
+    if (!target || !visualInViewport(target) || typeof pending.overlay.animate !== 'function') {
+      pending.overlay.remove();
+      return;
+    }
+
+    const to = target.getBoundingClientRect();
+    target.classList.add('work-visual--hidden');
+    let animation;
+    try {
+      animation = pending.overlay.animate([
+        { left: `${pending.from.left}px`, top: `${pending.from.top}px`, width: `${pending.from.width}px`, height: `${pending.from.height}px` },
+        { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` }
+      ], { duration: 520, easing: 'cubic-bezier(.22, 1, .36, 1)', fill: 'forwards' });
+    } catch {
+      target.classList.remove('work-visual--hidden');
+      pending.overlay.remove();
+      return;
+    }
+    const active = { animation, target, overlay: pending.overlay };
+    activeRef.current = active;
+    animation.onfinish = () => {
+      if (activeRef.current !== active) return;
+      activeRef.current = null;
+      target.classList.remove('work-visual--hidden');
+      pending.overlay.remove();
+    };
   }, [page]);
 
   const focusMain = (event) => {
@@ -390,16 +473,22 @@ function App() {
       <a className="skip-link" href="#main-content" onClick={focusMain}>跳到主要内容</a>
       <AmbientLight />
       <SiteHeader page={page} />
+      <span key={page} className="route-soften" aria-hidden="true" />
       <main
         ref={mainRef}
         id="main-content"
         className="site-main"
         tabIndex="-1"
         onScroll={(event) => {
-          if (page === 'works') worksScroll.current = event.currentTarget.scrollTop;
+          if (page === 'top' || page === 'works') sourceScroll.current[page] = event.currentTarget.scrollTop;
         }}
       >
-        <CurrentView key={page} page={page} />
+        <CurrentView
+          key={page}
+          page={page}
+          backPage={originRef.current?.workId === page ? originRef.current.page : 'works'}
+          sharedEntering={pendingRef.current?.toPage === page}
+        />
       </main>
     </div>
   );
