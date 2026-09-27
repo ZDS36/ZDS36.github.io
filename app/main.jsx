@@ -447,7 +447,7 @@ function App() {
       animation = pending.overlay.animate([
         { left: `${pending.from.left}px`, top: `${pending.from.top}px`, width: `${pending.from.width}px`, height: `${pending.from.height}px` },
         { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` }
-      ], { duration: 520, easing: 'cubic-bezier(.22, 1, .36, 1)', fill: 'forwards' });
+      ], { duration: 700, easing: 'cubic-bezier(.22, .68, .3, 1)', fill: 'forwards' });
     } catch {
       target.classList.remove('work-visual--hidden');
       pending.overlay.remove();
@@ -473,7 +473,6 @@ function App() {
       <a className="skip-link" href="#main-content" onClick={focusMain}>跳到主要内容</a>
       <AmbientLight />
       <SiteHeader page={page} />
-      <span key={page} className="route-soften" aria-hidden="true" />
       <main
         ref={mainRef}
         id="main-content"
