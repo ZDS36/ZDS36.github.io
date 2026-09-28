@@ -196,6 +196,26 @@ try {
   await page.waitForFunction(() => !document.querySelector('body > .work-visual') && !document.querySelector('.work-visual--hidden'));
   assert.deepEqual(errors, [], 'Hover-to-detail transition reported errors.');
   console.log('Passed: cover artwork moves and enlarges on hover, returns on leave, and opens the detail without leftover overlays.');
+  for (const route of ['work-site', 'work-dashboard']) {
+    await navigate('works');
+    await page.waitForFunction(() => !document.querySelector('body > .work-visual') && !document.getAnimations().some(a => a.animationName === 'paper-arrive' && a.playState === 'running'));
+    await page.mouse.move(0, 0);
+    const card = page.locator(`.work-card[href="#${route}"]`);
+    await card.hover();
+    await page.waitForFunction(id => {
+      const matrix = new DOMMatrix(getComputedStyle(document.querySelector(`.work-card[href="#${id}"] .work-visual__shape`)).transform);
+      return Math.hypot(matrix.a, matrix.b) > 1.1 && matrix.e < -10;
+    }, route);
+    await page.screenshot({ path: path.join(screenshotDirectory, `${route}-hover.png`) });
+    await card.click();
+    await settled(route);
+    await page.waitForFunction(() => !document.querySelector('body > .work-visual'));
+  }
+  const light = page.locator('.aurora--blue');
+  const before = await light.evaluate(el => getComputedStyle(el).transform);
+  await page.waitForFunction(previous => getComputedStyle(document.querySelector('.aurora--blue')).transform !== previous, before);
+  assert.deepEqual(errors, [], 'Work card hover reported errors.');
+  console.log('Passed: both work cards animate and open details; ambient gradient is moving.');
   console.log(`Screenshots: ${screenshotDirectory}`);
   console.log('Passed: 7 routes, rapid switching without page transparency, stable shell, links, back/forward, focus, scroll restoration, 6 viewport sizes, reduced motion, deep links, and isolated browser safety checks.');
 } finally {
