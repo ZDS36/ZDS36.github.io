@@ -63,10 +63,24 @@ function AmbientLight() {
     const syncVisibility = () => {
       ambient.classList.toggle('is-paused', document.hidden);
     };
+    const pointerMotion = window.matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
+    const followPointer = (event) => {
+      if (!pointerMotion.matches || event.pointerType !== 'mouse') return;
+      ambient.style.setProperty('--pointer-x', `${event.clientX}px`);
+      ambient.style.setProperty('--pointer-y', `${event.clientY}px`);
+      ambient.classList.add('is-following');
+    };
+    const resetPointer = () => ambient.classList.remove('is-following');
 
     syncVisibility();
     document.addEventListener('visibilitychange', syncVisibility);
-    return () => document.removeEventListener('visibilitychange', syncVisibility);
+    window.addEventListener('pointermove', followPointer, { passive: true });
+    pointerMotion.addEventListener('change', resetPointer);
+    return () => {
+      document.removeEventListener('visibilitychange', syncVisibility);
+      window.removeEventListener('pointermove', followPointer);
+      pointerMotion.removeEventListener('change', resetPointer);
+    };
   }, []);
 
   return (

@@ -46,6 +46,9 @@ h1:focus, .site-main:focus { outline: none; }
 .aurora--blue { top: -25%; right: -20%; background: radial-gradient(circle, #354f8a99, transparent 70%); }
 .aurora--violet { left: -25%; bottom: -30%; background: radial-gradient(circle, #75548a80, transparent 70%); animation-duration: 22s; animation-delay: -11s; }
 .ambient.is-paused .aurora { animation-play-state: paused; }
+.ambient.is-following .aurora { top: 0; left: 0; right: auto; bottom: auto; animation: none; transition: transform 700ms ease-out; }
+.ambient.is-following .aurora--blue { transform: translate3d(calc(var(--pointer-x) - 50%), calc(var(--pointer-y) - 50%), 0); }
+.ambient.is-following .aurora--violet { transform: translate3d(calc(100vw - var(--pointer-x) - 50%), calc(100dvh - var(--pointer-y) - 50%), 0); }
 @keyframes ambient-drift { from { transform: translate3d(-8%, -6%, 0); } to { transform: translate3d(12%, 10%, 0); } }
 
 .site-header { position: relative; z-index: 10; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 2rem; padding: env(safe-area-inset-top) var(--page-pad) 0; border-bottom: 1px solid #f0eee829; background: linear-gradient(135deg, #ffffff14, #ffffff03), #10151cb8; box-shadow: inset 0 1px #ffffff18, 0 10px 28px #00000024; -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%); }

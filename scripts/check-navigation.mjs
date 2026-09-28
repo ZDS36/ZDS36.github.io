@@ -212,10 +212,16 @@ try {
     await page.waitForFunction(() => !document.querySelector('body > .work-visual'));
   }
   const light = page.locator('.aurora--blue');
-  const before = await light.evaluate(el => getComputedStyle(el).transform);
-  await page.waitForFunction(previous => getComputedStyle(document.querySelector('.aurora--blue')).transform !== previous, before);
+  await page.mouse.move(100, 100);
+  await page.waitForFunction(() => !document.getAnimations().some(a => a.transitionProperty === 'transform' && a.playState === 'running'));
+  const before = await light.evaluate(el => new DOMMatrix(getComputedStyle(el).transform).e);
+  await page.mouse.move(1200, 700);
+  await page.waitForFunction(previous => new DOMMatrix(getComputedStyle(document.querySelector('.aurora--blue')).transform).e > previous + 900, before);
+  await page.screenshot({ path: path.join(screenshotDirectory, 'pointer-gradient.png') });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.waitForFunction(() => !document.querySelector('.ambient.is-following'));
   assert.deepEqual(errors, [], 'Work card hover reported errors.');
-  console.log('Passed: both work cards animate and open details; ambient gradient is moving.');
+  console.log('Passed: both work cards animate and open details; gradient follows the mouse and respects reduced motion.');
   console.log(`Screenshots: ${screenshotDirectory}`);
   console.log('Passed: 7 routes, rapid switching without page transparency, stable shell, links, back/forward, focus, scroll restoration, 6 viewport sizes, reduced motion, deep links, and isolated browser safety checks.');
 } finally {
