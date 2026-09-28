@@ -172,6 +172,30 @@ try {
       await page.screenshot({ path: path.join(screenshotDirectory, `${label}-${route}.png`) });
     }
   }
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await navigate('top');
+  const cover = page.locator('.featured-work');
+  const shape = cover.locator('.work-visual__shape');
+  await cover.scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
+  await page.waitForFunction(() => !document.getAnimations().some(a => a.animationName === 'paper-arrive' && a.playState === 'running'));
+  const restTransform = await shape.evaluate(el => getComputedStyle(el).transform);
+  await page.screenshot({ path: path.join(screenshotDirectory, 'cover-rest.png') });
+  await cover.hover();
+  await page.waitForFunction(() => {
+    const matrix = new DOMMatrix(getComputedStyle(document.querySelector('.featured-work .work-visual__shape')).transform);
+    return Math.hypot(matrix.a, matrix.b) > 1.1 && matrix.e < -10;
+  });
+  await page.screenshot({ path: path.join(screenshotDirectory, 'cover-hover.png') });
+  await page.mouse.move(0, 0);
+  await page.waitForFunction(rest => getComputedStyle(document.querySelector('.featured-work .work-visual__shape')).transform === rest, restTransform);
+  await cover.hover();
+  await cover.click();
+  await settled('work-site');
+  await page.waitForFunction(() => !document.querySelector('body > .work-visual') && !document.querySelector('.work-visual--hidden'));
+  assert.deepEqual(errors, [], 'Hover-to-detail transition reported errors.');
+  console.log('Passed: cover artwork moves and enlarges on hover, returns on leave, and opens the detail without leftover overlays.');
   console.log(`Screenshots: ${screenshotDirectory}`);
   console.log('Passed: 7 routes, rapid switching without page transparency, stable shell, links, back/forward, focus, scroll restoration, 6 viewport sizes, reduced motion, deep links, and isolated browser safety checks.');
 } finally {

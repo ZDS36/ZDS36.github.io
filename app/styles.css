@@ -126,9 +126,12 @@ h1:focus, .site-main:focus { outline: none; }
 .text-link:hover { color: var(--paper); }
 .featured-work { display: block; min-width: 0; border: 1px solid #445044; background: var(--panel); transition: transform 220ms cubic-bezier(.2, .8, .2, 1), border-color 180ms, box-shadow 220ms; }
 .featured-work:focus-visible { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 16px 36px #00000055; }
+.featured-work__visual .work-visual__shape { transition: transform 650ms cubic-bezier(.2, .65, .3, 1); }
+.featured-work:focus-visible .work-visual__shape { transform: translate(-10%, -6%) rotate(-12deg) scale(1.12); }
 @media (hover: hover) and (pointer: fine) {
   .featured-work:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 16px 36px #00000055; }
   .featured-work:hover .featured-work__arrow { transform: translate(3px, -3px); }
+  .featured-work:hover .work-visual__shape { transform: translate(-10%, -6%) rotate(-12deg) scale(1.12); }
 }
 .featured-work__visual { height: clamp(21rem, 50vh, 34rem); }
 .work-visual { position: relative; container-type: inline-size; overflow: hidden; isolation: isolate; color: #273229; background: #d8decf; border: 1px solid #a4b09d; }

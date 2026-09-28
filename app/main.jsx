@@ -389,6 +389,8 @@ function App() {
         if (source && visualInViewport(source)) {
           const rect = source.getBoundingClientRect();
           const overlay = source.cloneNode(true);
+          // Carry the hovered artwork into the expanding cover, then ease it home.
+          overlay.querySelector('.work-visual__shape').style.transform = getComputedStyle(source.querySelector('.work-visual__shape')).transform;
           overlay.style.position = 'fixed';
           overlay.style.left = `${rect.left}px`;
           overlay.style.top = `${rect.top}px`;
@@ -444,10 +446,16 @@ function App() {
     target.classList.add('work-visual--hidden');
     let animation;
     try {
+      const timing = { duration: 700, easing: 'cubic-bezier(.22, .68, .3, 1)', fill: 'forwards' };
+      const shape = pending.overlay.querySelector('.work-visual__shape');
+      shape.animate([
+        { transform: shape.style.transform },
+        { transform: getComputedStyle(target.querySelector('.work-visual__shape')).transform }
+      ], timing);
       animation = pending.overlay.animate([
         { left: `${pending.from.left}px`, top: `${pending.from.top}px`, width: `${pending.from.width}px`, height: `${pending.from.height}px` },
         { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` }
-      ], { duration: 700, easing: 'cubic-bezier(.22, .68, .3, 1)', fill: 'forwards' });
+      ], timing);
     } catch {
       target.classList.remove('work-visual--hidden');
       pending.overlay.remove();
