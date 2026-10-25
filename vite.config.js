@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   root: fileURLToPath(new URL('./app', import.meta.url)),
   base: '/',
-  publicDir: false,
+  publicDir: fileURLToPath(new URL('./public', import.meta.url)),
   plugins: [react()],
   build: {
     outDir: fileURLToPath(new URL('./.site-build', import.meta.url)),

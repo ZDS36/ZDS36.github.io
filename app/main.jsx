@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 import avatarUrl from './avatar.jpg';
 
-const PAGE_IDS = ['top', 'works', 'work-site', 'work-dashboard', 'slices', 'about', 'contact'];
+const PAGE_IDS = ['top', 'works', 'work-film', 'work-site', 'work-dashboard', 'slices', 'about', 'contact'];
+const CHAPTERS = ['top', 'works', 'slices', 'about', 'contact'];
 
 const NAV_ITEMS = [
   { id: 'top', label: '首页' },
@@ -14,8 +15,17 @@ const NAV_ITEMS = [
 
 const WORKS = [
   {
-    id: 'work-site',
+    id: 'work-film',
     number: '01',
+    title: '沉没成本',
+    subtitle: '亲密关系中的一次重新判断',
+    meta: 'MOTION FILM / 2026 / 02:18',
+    summary: '当我们舍不得一段关系，舍不得的究竟是眼前的人，还是已经投入的时间？',
+    tone: 'film'
+  },
+  {
+    id: 'work-site',
+    number: '02',
     title: '未定态',
     subtitle: '个人网站',
     meta: 'WEB / 2026',
@@ -25,7 +35,7 @@ const WORKS = [
   },
   {
     id: 'work-dashboard',
-    number: '02',
+    number: '03',
     title: '课程面板',
     subtitle: '实用工具',
     meta: 'TOOL / 2026',
@@ -38,6 +48,7 @@ const WORKS = [
 const PAGE_TITLES = {
   top: '张刀宋｜未定态 / Between States',
   works: '作品｜张刀宋',
+  'work-film': '沉没成本 · 动态短片｜张刀宋',
   'work-site': '未定态个人网站｜张刀宋',
   'work-dashboard': '课程面板｜张刀宋',
   about: '关于我｜张刀宋',
@@ -87,12 +98,20 @@ function AmbientLight() {
     <div ref={ambientRef} className="ambient" aria-hidden="true">
       <span className="aurora aurora--blue" />
       <span className="aurora aurora--violet" />
+      <span className="ambient__orbit" />
+      <span className="ambient__grid" />
+      <span className="ambient__word">BETWEEN<br />STATES</span>
     </div>
   );
 }
 
 function SiteHeader({ page }) {
   const activePage = page.startsWith('work-') ? 'works' : page;
+  const trackIndicatorMotion = (event) => {
+    if (event.nativeEvent.propertyName === 'transform') {
+      event.currentTarget.classList.toggle('is-moving', event.nativeEvent.type === 'transitionrun');
+    }
+  };
 
   return (
     <header className="site-header">
@@ -111,6 +130,10 @@ function SiteHeader({ page }) {
             {item.label}
           </a>
         ))}
+        <span className="primary-nav__indicator" aria-hidden="true"
+          onTransitionRun={trackIndicatorMotion}
+          onTransitionEnd={trackIndicatorMotion}
+          onTransitionCancel={trackIndicatorMotion} />
       </nav>
 
       <a
@@ -139,7 +162,9 @@ function WorkVisual({ work, className = '' }) {
     <div className={`work-visual work-visual--${work.tone} ${className}`.trim()} data-work-visual={work.id} aria-hidden="true">
       <span className="work-visual__caption">{work.meta}</span>
       <span className="work-visual__number">{work.number}</span>
-      <span className="work-visual__shape" />
+      <span className="work-visual__shape">
+        {work.id === 'work-film' && <img src="/media/sunk-cost/poster.jpg" alt="" width="1600" height="900" />}
+      </span>
       <strong className="work-visual__title">{work.title}</strong>
     </div>
   );
@@ -163,7 +188,7 @@ function Hero({ sharedEntering }) {
 
         <div className="home__statement">
           <p>把正在做的东西，<br /><em>认真地留下来。</em></p>
-          <span>这里收集网页、工具与过程中的判断。内容仍在生长，但每一项都来自真实完成的工作。</span>
+          <span>这里收集网页、工具与影像，也记录把想法变成作品的过程。</span>
         </div>
 
         <div className="home__actions">
@@ -172,21 +197,21 @@ function Hero({ sharedEntering }) {
         </div>
       </div>
 
-      <a className="featured-work" href="#work-site" aria-label="查看精选作品：未定态个人网站">
+      <a className="featured-work" href="#work-film" aria-label="观看精选短片：沉没成本">
         <WorkVisual work={WORKS[0]} className="featured-work__visual" />
         <div className="featured-work__copy">
           <span>FEATURED / 01</span>
           <div>
-            <h2>未定态 · 个人网站</h2>
-            <p>一次关于内容、秩序与个人表达的持续设计。</p>
+            <h2>沉没成本 · 动态短片</h2>
+            <p>亲密关系中的一次重新判断。</p>
           </div>
-          <span className="featured-work__arrow" aria-hidden="true">↗</span>
+          <span className="featured-work__arrow" aria-hidden="true">▶</span>
         </div>
+        <span className="featured-work__watch">观看短片 <span>02:18 ↗</span></span>
       </a>
 
       <div className="home__foot">
-        <p><span>NOW</span> 正在重做这个网站</p>
-        <p><span>FOCUS</span> WEB · TOOLS · INTERACTION</p>
+        <p><span>LATEST</span> 新的表达，留在影像里。</p>
       </div>
     </section>
   );
@@ -228,7 +253,7 @@ function WorksView({ sharedEntering }) {
       <div className="works-grid">
         {WORKS.map((work) => <WorkCard key={work.id} work={work} />)}
       </div>
-      <footer className="page-foot"><span>02 PROJECTS</span><span>MORE / IN PROGRESS</span></footer>
+      <footer className="page-foot"><span>03 PROJECTS</span><span>MORE / IN PROGRESS</span></footer>
     </section>
   );
 }
@@ -277,11 +302,59 @@ function WorkDetail({ work, nextWork, backPage, sharedEntering }) {
   );
 }
 
+function FilmDetail({ backPage, sharedEntering }) {
+  const playerRef = useRef(null);
+  useEffect(() => {
+    const pauseWhenHidden = () => { if (document.hidden) playerRef.current?.pause(); };
+    document.addEventListener('visibilitychange', pauseWhenHidden);
+    return () => document.removeEventListener('visibilitychange', pauseWhenHidden);
+  }, []);
+
+  return (
+    <section className={`view page film-detail${sharedEntering ? ' view--shared-enter' : ''}`} data-view="work-film" aria-label="沉没成本">
+      <a className="back-link-v2" href={`#${backPage}`}><span aria-hidden="true">←</span> 返回{backPage === 'top' ? '首页' : '作品'}</a>
+      <header className="film-heading">
+        <p className="page-kicker"><span>01</span> / MOTION FILM / 2026</p>
+        <h1 tabIndex="-1">沉没成本<span>SUNK COST</span></h1>
+        <p>亲密关系中的一次重新判断</p>
+        <span className="film-heading__meta">02:18 · 动态文字 / 粒子 / 音乐</span>
+      </header>
+      <div className="film-player" data-work-visual="work-film">
+        <video ref={playerRef} controls playsInline preload="none" poster="/media/sunk-cost/poster.jpg" width="1600" height="900" aria-label="沉没成本完整短片，约2分18秒，音乐与屏幕文字，无旁白">
+          <source src="/media/sunk-cost/film.mp4" type="video/mp4" />
+          当前浏览器无法播放视频，<a href="/media/sunk-cost/film.mp4">打开完整短片</a>。
+        </video>
+        <span className="work-visual__shape film-player__shape" aria-hidden="true" />
+      </div>
+      <p className="film-player__note">点击播放 · 建议开启声音，全屏观看<span>完整短片 / 16:9</span></p>
+      <div className="film-story">
+        <blockquote>“都已经在一起<br />这么久了。”</blockquote>
+        <div>
+          <p>一句熟悉的话，有时会让过去的投入，变成继续投入的理由。</p>
+          <p>《沉没成本》从亲密关系中的日常对话出发，用动态文字、粒子形态与音乐节奏，呈现投入、不甘、犹豫与重新判断的过程。它把问题留给当下：如果从今天开始，你还愿意选择这段关系吗？</p>
+        </div>
+      </div>
+      <div className="film-stills" aria-label="片中画面">
+        <figure><img src="/media/sunk-cost/past.jpg" alt="片中画面：把已经发生的四年与未来的选择分开看" loading="lazy" width="960" height="540" /><figcaption><span>01 / 过去</span> 已经发生，也曾有价值。</figcaption></figure>
+        <figure><img src="/media/sunk-cost/weight.jpg" alt="片中画面：暗色空间里，粒子呈现过去投入的重量" loading="lazy" width="960" height="540" /><figcaption><span>02 / 不甘</span> 让抽象的重量被看见。</figcaption></figure>
+        <figure><img src="/media/sunk-cost/release.jpg" alt="片中画面：松开过去，重新看当下" loading="lazy" width="960" height="540" /><figcaption><span>03 / 松开</span> 把选择留给未来。</figcaption></figure>
+      </div>
+      <div className="film-making">
+        <p className="page-kicker">BEHIND THE FILM / 创作介绍</p>
+        <p>绷紧的线、下坠的锚、倾斜的天平与逐渐松开的粒子，让抽象的心理感受变成可以看见的运动。画面随着音乐经历收紧、暗沉与舒展，把过去的投入和未来的选择慢慢分开。</p>
+        <p className="film-boundary">片中案例为虚构，图表用于概念示意。继续或离开，都需要结合当下的真实处境判断。</p>
+        <div className="film-credits"><span>作品呈现 / 张刀宋 · 2026</span><span>内容参考 / <a href="https://doi.org/10.1016/0749-5978(85)90049-4" target="_blank" rel="noreferrer">Arkes &amp; Blumer, 1985 ↗</a> · <a href="https://doi.org/10.1007/s12144-016-9529-9" target="_blank" rel="noreferrer">Rego et al., 2018 ↗</a></span></div>
+      </div>
+      <a className="next-work" href="#work-site"><span>NEXT PROJECT / 02</span><strong>未定态 · 个人网站</strong><i aria-hidden="true">→</i></a>
+    </section>
+  );
+}
+
 function SlicesView() {
   const slices = [
-    ['09.25', '此刻', '正在重新整理这个网站，让真实内容成为视觉中心。'],
-    ['09.24', '选择', '保留点击式页面结构，让每次进入都像翻开一页档案。'],
-    ['长期', '原则', '只展示确认过的经历与作品，不用漂亮话填满空白。']
+    ['09.29', '想弹会的一首歌', '最近在练吉他，想学会弹唱 h3R3 刘清云的《还是会想你》。现在还在慢慢练。'],
+    ['09.29', '还在冲钻石', '最近在冲无畏契约的钻石段位，不过打得挺菜，打着打着就有点迷茫。'],
+    ['09.29', '先做着玩', '还没想清楚为什么要做这个个人网站，就是想做着玩一下。先把喜欢的东西和折腾的过程放在这里。']
   ];
 
   return (
@@ -314,13 +387,14 @@ function AboutView() {
         <div className="about-layout__story">
           <p className="about-layout__lead">这里是张刀宋的<br />个人数字空间。</p>
           <div className="about-layout__copy">
-            <p>我用它收集正在完成的网页、工具与视觉实验，也记录过程里值得留下的判断。</p>
-            <p>比起堆满标签，我更愿意让具体作品说明问题。这里会持续更新，但不会用未经确认的经历填充页面。</p>
+            <p>最近在练吉他，因为喜欢 h3R3 刘清云。最想学会弹唱的是《还是会想你》，现在还在慢慢练。</p>
+            <p>也在冲无畏契约的钻石段位，不过打得挺菜，打着打着就有点迷茫。</p>
+            <p>至于为什么做这个网站，其实还没想清楚。一开始就是想做着玩，那就先把喜欢的东西、折腾的过程，慢慢放在这里。</p>
           </div>
           <dl className="about-facts">
-            <div><dt>现在</dt><dd>持续整理个人项目</dd></div>
-            <div><dt>本站关注</dt><dd>网页设计 · 实用工具 · 交互体验</dd></div>
-            <div><dt>更新方式</dt><dd>少量、真实、慢慢完善</dd></div>
+            <div><dt>正在练</dt><dd>吉他 ·《还是会想你》</dd></div>
+            <div><dt>小目标</dt><dd>无畏契约打上钻石</dd></div>
+            <div><dt>这个网站</dt><dd>先做着玩，慢慢想</dd></div>
           </dl>
         </div>
       </div>
@@ -346,8 +420,9 @@ function ContactView() {
 
 function CurrentView({ page, backPage, sharedEntering }) {
   if (page === 'works') return <WorksView sharedEntering={sharedEntering} />;
-  if (page === 'work-site') return <WorkDetail work={WORKS[0]} nextWork={WORKS[1]} backPage={backPage} sharedEntering={sharedEntering} />;
-  if (page === 'work-dashboard') return <WorkDetail work={WORKS[1]} nextWork={WORKS[0]} backPage={backPage} sharedEntering={sharedEntering} />;
+  if (page === 'work-film') return <FilmDetail backPage={backPage} sharedEntering={sharedEntering} />;
+  if (page === 'work-site') return <WorkDetail work={WORKS[1]} nextWork={WORKS[2]} backPage={backPage} sharedEntering={sharedEntering} />;
+  if (page === 'work-dashboard') return <WorkDetail work={WORKS[2]} nextWork={WORKS[0]} backPage={backPage} sharedEntering={sharedEntering} />;
   if (page === 'slices') return <SlicesView />;
   if (page === 'about') return <AboutView />;
   if (page === 'contact') return <ContactView />;
@@ -356,16 +431,25 @@ function CurrentView({ page, backPage, sharedEntering }) {
 
 function App() {
   const [page, setPage] = useState(pageFromHash);
+  const [navigation, setNavigation] = useState(() => ({ page: pageFromHash(), animate: false }));
   const mainRef = useRef(null);
+  const maskRef = useRef(null);
   const pageRef = useRef(page);
-  const sourceScroll = useRef({ top: 0, works: 0 });
   const originRef = useRef(null);
   const pendingRef = useRef(null);
   const activeRef = useRef(null);
-  const previousPage = useRef(page);
+  const maskAnimation = useRef(null);
+  const isDetail = navigation.page.startsWith('work-');
 
   useEffect(() => {
+    const main = mainRef.current;
+    const shell = main.closest('.app-shell');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const oldRestoration = history.scrollRestoration;
+    history.scrollRestoration = 'manual';
     const clearTransition = () => {
+      maskAnimation.current?.cancel();
+      maskAnimation.current = null;
       if (pendingRef.current) {
         pendingRef.current.overlay.remove();
         pendingRef.current = null;
@@ -377,85 +461,105 @@ function App() {
       active.target.classList.remove('work-visual--hidden');
       active.overlay.remove();
     };
-
     const syncPage = () => {
-      const requested = window.location.hash.slice(1);
-      if (requested && !PAGE_IDS.includes(requested)) {
-        window.history.replaceState(null, '', '#top');
-      }
-
       const nextPage = pageFromHash();
+      if (window.location.hash !== `#${nextPage}`) history.replaceState(null, '', `#${nextPage}`);
       const oldPage = pageRef.current;
-      if (nextPage === oldPage) return;
       clearTransition();
-
       const enteringWork = !oldPage.startsWith('work-') && nextPage.startsWith('work-');
-      const returningToSource = oldPage.startsWith('work-') && originRef.current?.workId === oldPage && originRef.current.page === nextPage;
-      if (enteringWork && (oldPage === 'top' || oldPage === 'works')) {
-        originRef.current = { page: oldPage, workId: nextPage };
+      const returning = oldPage.startsWith('work-') && originRef.current?.workId === oldPage && originRef.current.page === nextPage;
+      if (enteringWork) {
+        originRef.current = { page: oldPage, workId: nextPage, scroll: main.scrollTop };
       } else if (oldPage.startsWith('work-') && nextPage.startsWith('work-')) {
         originRef.current = null;
       }
-
-      if ((enteringWork || returningToSource) && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if ((enteringWork || returning) && !reducedMotion.matches) {
         const workId = enteringWork ? nextPage : oldPage;
-        const source = mainRef.current?.querySelector(`[data-work-visual="${workId}"]`);
+        const source = main.querySelector(`[data-view="${oldPage}"] [data-work-visual="${workId}"]`);
         if (source && visualInViewport(source)) {
           const rect = source.getBoundingClientRect();
           const overlay = source.cloneNode(true);
-          // Carry the hovered artwork into the expanding cover, then ease it home.
           overlay.querySelector('.work-visual__shape').style.transform = getComputedStyle(source.querySelector('.work-visual__shape')).transform;
-          overlay.style.position = 'fixed';
-          overlay.style.left = `${rect.left}px`;
-          overlay.style.top = `${rect.top}px`;
-          overlay.style.width = `${rect.width}px`;
-          overlay.style.height = `${rect.height}px`;
-          overlay.style.zIndex = '1000';
-          overlay.style.pointerEvents = 'none';
+          Object.assign(overlay.style, {
+            position: 'fixed', left: `${rect.left}px`, top: `${rect.top}px`,
+            width: `${rect.width}px`, height: `${rect.height}px`, zIndex: '1000', pointerEvents: 'none'
+          });
           overlay.setAttribute('aria-hidden', 'true');
           document.body.append(overlay);
           pendingRef.current = { overlay, from: rect, toPage: nextPage, workId };
         }
       }
-
+      pageRef.current = nextPage;
       setPage(nextPage);
+      setNavigation({ page: nextPage, focus: true, animate: !reducedMotion.matches, restore: returning ? originRef.current.scroll : null });
     };
-
-    const onVisibilityChange = () => {
-      if (document.hidden) clearTransition();
+    const onClick = (event) => {
+      const link = event.target.closest('a[href^="#"]');
+      if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const nextPage = link.getAttribute('href').slice(1);
+      if (!PAGE_IDS.includes(nextPage)) return;
+      event.preventDefault();
+      if (location.hash !== `#${nextPage}`) history.pushState(null, '', `#${nextPage}`);
+      syncPage();
+    };
+    const onVisibilityChange = () => { if (document.hidden) clearTransition(); };
+    const onMotionChange = () => { if (reducedMotion.matches) clearTransition(); };
+    const onScroll = () => {
+      const active = activeRef.current;
+      if (active && Math.abs(active.target.getBoundingClientRect().top - active.to.top) > 2) clearTransition();
     };
     window.addEventListener('hashchange', syncPage);
+    window.addEventListener('resize', clearTransition);
+    main.addEventListener('scroll', onScroll, { passive: true });
+    main.addEventListener('wheel', clearTransition, { passive: true });
+    main.addEventListener('touchstart', clearTransition, { passive: true });
+    shell.addEventListener('click', onClick);
     document.addEventListener('visibilitychange', onVisibilityChange);
-    syncPage();
+    reducedMotion.addEventListener('change', onMotionChange);
+    if (location.hash !== `#${pageFromHash()}`) history.replaceState(null, '', `#${pageFromHash()}`);
     return () => {
+      history.scrollRestoration = oldRestoration;
       window.removeEventListener('hashchange', syncPage);
+      window.removeEventListener('resize', clearTransition);
+      main.removeEventListener('scroll', onScroll);
+      main.removeEventListener('wheel', clearTransition);
+      main.removeEventListener('touchstart', clearTransition);
+      shell.removeEventListener('click', onClick);
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      reducedMotion.removeEventListener('change', onMotionChange);
       clearTransition();
     };
   }, []);
 
+  useEffect(() => { document.title = PAGE_TITLES[page]; }, [page]);
+
   useLayoutEffect(() => {
-    document.title = PAGE_TITLES[page];
-
     const main = mainRef.current;
-    if (previousPage.current !== page) {
-      const returning = previousPage.current.startsWith('work-') && originRef.current?.page === page;
-      main.scrollTop = returning && (page === 'top' || page === 'works') ? sourceScroll.current[page] : 0;
-      main.scrollLeft = 0;
-      main.querySelector('h1')?.focus({ preventScroll: true });
-      previousPage.current = page;
+    const section = main.querySelector(`[data-view="${navigation.page}"]`);
+    if (!section) return;
+    main.scrollTop = navigation.restore ?? section.offsetTop;
+    main.scrollLeft = 0;
+    if (navigation.focus) section.querySelector('h1')?.focus({ preventScroll: true });
+    // Replay the existing paper arrival only for explicitly selected chapters.
+    section.classList.remove('is-arriving');
+    if (navigation.animate) {
+      void section.offsetWidth;
+      section.classList.add('is-arriving');
+      if (typeof maskRef.current.animate === 'function') {
+        maskAnimation.current = maskRef.current.animate([
+          { backdropFilter: 'blur(10px)', opacity: 1 },
+          { backdropFilter: 'blur(0px)', opacity: 0 }
+        ], { duration: 620, easing: 'cubic-bezier(.2, .65, .3, 1)' });
+      }
     }
-    pageRef.current = page;
-
     const pending = pendingRef.current;
-    if (!pending || pending.toPage !== page) return;
+    if (!pending || pending.toPage !== navigation.page) return;
     pendingRef.current = null;
-    const target = main.querySelector(`[data-work-visual="${pending.workId}"]`);
+    const target = section.querySelector(`[data-work-visual="${pending.workId}"]`);
     if (!target || !visualInViewport(target) || typeof pending.overlay.animate !== 'function') {
       pending.overlay.remove();
       return;
     }
-
     const to = target.getBoundingClientRect();
     target.classList.add('work-visual--hidden');
     let animation;
@@ -475,7 +579,7 @@ function App() {
       pending.overlay.remove();
       return;
     }
-    const active = { animation, target, overlay: pending.overlay };
+    const active = { animation, target, overlay: pending.overlay, to };
     activeRef.current = active;
     animation.onfinish = () => {
       if (activeRef.current !== active) return;
@@ -483,34 +587,81 @@ function App() {
       target.classList.remove('work-visual--hidden');
       pending.overlay.remove();
     };
-  }, [page]);
+  }, [navigation]);
 
-  const focusMain = (event) => {
-    event.preventDefault();
-    mainRef.current.focus({ preventScroll: true });
-  };
+  useEffect(() => {
+    const main = mainRef.current;
+    const shell = main.closest('.app-shell');
+    const sections = [...main.querySelectorAll('[data-view]')];
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      if (document.hidden) return;
+      const height = main.clientHeight;
+      const progress = main.scrollTop / Math.max(1, main.scrollHeight - height);
+      shell.style.setProperty('--journey', progress);
+      shell.style.setProperty('--depth', motion.matches ? '0px' : `${progress * -320}px`);
+      let current = sections[0];
+      for (const section of sections) {
+        const top = section.offsetTop - main.scrollTop;
+        if (top <= height * .35) current = section;
+        if (top < height && top + section.offsetHeight > 0) {
+          section.classList.add('is-revealed');
+          const drift = Math.max(-70, Math.min(70, (height / 2 - top - section.offsetHeight / 2) * .12));
+          section.style.setProperty('--drift', motion.matches ? '0px' : `${drift}px`);
+        }
+      }
+      if (!isDetail && current && current.dataset.view !== pageRef.current) {
+        pageRef.current = current.dataset.view;
+        setPage(current.dataset.view);
+        // Update the address without adding history entries or moving keyboard focus.
+        history.replaceState(null, '', `#${current.dataset.view}`);
+      }
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+    const visibility = () => {
+      if (document.hidden) { cancelAnimationFrame(frame); frame = 0; }
+      else schedule();
+    };
+    const resize = new ResizeObserver(schedule);
+    sections.forEach(section => resize.observe(section));
+    main.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    document.addEventListener('visibilitychange', visibility);
+    motion.addEventListener('change', schedule);
+    schedule();
+    return () => {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      main.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      document.removeEventListener('visibilitychange', visibility);
+      motion.removeEventListener('change', schedule);
+    };
+  }, [isDetail, navigation.page]);
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#main-content" onClick={focusMain}>跳到主要内容</a>
+      <a className="skip-link" href="#main-content" onClick={(event) => {
+        event.preventDefault();
+        mainRef.current.focus({ preventScroll: true });
+      }}>跳到主要内容</a>
       <AmbientLight />
       <SiteHeader page={page} />
-      <main
-        ref={mainRef}
-        id="main-content"
-        className="site-main"
-        tabIndex="-1"
-        onScroll={(event) => {
-          if (page === 'top' || page === 'works') sourceScroll.current[page] = event.currentTarget.scrollTop;
-        }}
-      >
-        <CurrentView
-          key={page}
-          page={page}
-          backPage={originRef.current?.workId === page ? originRef.current.page : 'works'}
-          sharedEntering={pendingRef.current?.toPage === page}
-        />
+      <main ref={mainRef} id="main-content" className="site-main" tabIndex="-1">
+        {isDetail ? (
+          <CurrentView key={navigation.page} page={navigation.page}
+            backPage={originRef.current?.workId === navigation.page ? originRef.current.page : 'works'}
+            sharedEntering={pendingRef.current?.toPage === navigation.page} />
+        ) : (
+          <div className="archive">
+            {CHAPTERS.map(id => <CurrentView key={id} page={id} sharedEntering={pendingRef.current?.toPage === id} />)}
+          </div>
+        )}
       </main>
+      <div ref={maskRef} className="chapter-mask" aria-hidden="true" />
+      <div className="reading-progress" aria-hidden="true" />
     </div>
   );
 }

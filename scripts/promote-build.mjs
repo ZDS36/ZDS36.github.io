@@ -9,7 +9,8 @@ const files = [
   ['index.html', 'index.html'],
   [path.join('assets', 'site.js'), path.join('assets', 'site.js')],
   [path.join('assets', 'site.css'), path.join('assets', 'site.css')],
-  [path.join('assets', 'site.jpg'), path.join('assets', 'site.jpg')]
+  [path.join('assets', 'site.jpg'), path.join('assets', 'site.jpg')],
+  ...['film.mp4', 'poster.jpg', 'past.jpg', 'weight.jpg', 'release.jpg'].map(name => [path.join('media', 'sunk-cost', name), path.join('media', 'sunk-cost', name)])
 ];
 
 function assertInside(base, candidate, label) {

@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -28,7 +29,7 @@ function requireMarker(text, marker, label) {
   }
 }
 
-for (const requiredCopy of ['张刀宋', '作品', '切片', '关于', '联系我', '未定态', '课程面板']) {
+for (const requiredCopy of ['张刀宋', '作品', '切片', '关于', '联系我', '未定态', '课程面板', '沉没成本']) {
   requireMarker(sourceHtml + sourceJsx, requiredCopy, 'Site copy');
 }
 
@@ -38,7 +39,7 @@ for (const forbiddenCopy of ['选择一个入口', '薛定谔', '\uFFFD']) {
   }
 }
 
-for (const route of ['top', 'works', 'work-site', 'work-dashboard', 'slices', 'about', 'contact']) {
+for (const route of ['top', 'works', 'work-film', 'work-site', 'work-dashboard', 'slices', 'about', 'contact']) {
   requireMarker(sourceJsx, route, 'Route source');
 }
 
@@ -67,4 +68,12 @@ for (const relativePath of ['.site-build/index.html', '.site-build/assets/site.j
   }
 }
 
-console.log('Site source and isolated production build passed validation.');
+for (const name of ['film.mp4', 'poster.jpg', 'past.jpg', 'weight.jpg', 'release.jpg']) {
+  const relative = path.join('media', 'sunk-cost', name);
+  const [source, built] = await Promise.all([readFile(path.join(repositoryRoot, 'public', relative)), readFile(path.join(buildRoot, relative))]);
+  if (source.length < 1024 || createHash('sha256').update(source).digest('hex') !== createHash('sha256').update(built).digest('hex')) {
+    throw new Error(`Film asset is missing or differs from source: ${name}`);
+  }
+}
+
+console.log('Site source, film assets and isolated production build passed validation.');
