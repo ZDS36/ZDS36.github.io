@@ -29,7 +29,7 @@ function requireMarker(text, marker, label) {
   }
 }
 
-for (const requiredCopy of ['张刀宋', '作品', '切片', '关于', '联系我', '未定态', '课程面板', '沉没成本']) {
+for (const requiredCopy of ['张刀宋', '作品', '切片', '关于', '联系我', '未定态', '课程面板', '沉没成本', '张刀宋净化', '一键配置', '开机自启']) {
   requireMarker(sourceHtml + sourceJsx, requiredCopy, 'Site copy');
 }
 
@@ -39,7 +39,7 @@ for (const forbiddenCopy of ['选择一个入口', '薛定谔', '\uFFFD']) {
   }
 }
 
-for (const route of ['top', 'works', 'work-film', 'work-site', 'work-dashboard', 'slices', 'about', 'contact']) {
+for (const route of ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'slices', 'about', 'contact']) {
   requireMarker(sourceJsx, route, 'Route source');
 }
 
@@ -76,4 +76,13 @@ for (const name of ['film.mp4', 'poster.jpg', 'past.jpg', 'weight.jpg', 'release
   }
 }
 
-console.log('Site source, film assets and isolated production build passed validation.');
+for (const name of ['ZhangDaoSongJinghua-0.2.3.apk', 'quick-start.txt']) {
+  const relative = path.join('downloads', 'zhangdaosong', name);
+  const [source, built] = await Promise.all([readFile(path.join(repositoryRoot, 'public', relative)), readFile(path.join(buildRoot, relative))]);
+  const hash = value => createHash('sha256').update(value).digest('hex');
+  if (source.length < 64 || hash(source) !== hash(built)) throw new Error(`Software download differs from source: ${name}`);
+  if (name.endsWith('.apk') && hash(source) !== 'c1cef88c9a37fa758f188a023e11a512b2abe2df77c22f96096a6a45a3cc3253') throw new Error('APK does not match verified release');
+  requireMarker(sourceJsx, `/downloads/zhangdaosong/${name}`, 'Software download link');
+}
+
+console.log('Site source, film assets, APK release hash and production build passed validation.');

@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const base = new URL(process.argv[2] || 'http://127.0.0.1:4173');
 assert(['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname), 'Use a local preview URL.');
-const routes = ['top', 'works', 'work-film', 'work-site', 'work-dashboard', 'slices', 'about', 'contact'];
+const routes = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'slices', 'about', 'contact'];
 const browser = await chromium.launch({ headless: true, chromiumSandbox: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
 
 try {

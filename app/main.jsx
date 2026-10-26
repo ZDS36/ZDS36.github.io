@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 import avatarUrl from './avatar.jpg';
 
-const PAGE_IDS = ['top', 'works', 'work-film', 'work-site', 'work-dashboard', 'slices', 'about', 'contact'];
+const PAGE_IDS = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'slices', 'about', 'contact'];
 const CHAPTERS = ['top', 'works', 'slices', 'about', 'contact'];
 
 const NAV_ITEMS = [
@@ -24,8 +24,17 @@ const WORKS = [
     tone: 'film'
   },
   {
-    id: 'work-site',
+    id: 'work-qingping',
     number: '02',
+    title: '张刀宋净化',
+    subtitle: '安卓开屏广告辅助工具',
+    meta: 'ANDROID / v0.2.3 / 2026',
+    summary: '让长辈少找几个开关，让每次打开应用少等一会儿。离线运行，帮助跳过开屏广告。',
+    tone: 'sage'
+  },
+  {
+    id: 'work-site',
+    number: '03',
     title: '未定态',
     subtitle: '个人网站',
     meta: 'WEB / 2026',
@@ -35,7 +44,7 @@ const WORKS = [
   },
   {
     id: 'work-dashboard',
-    number: '03',
+    number: '04',
     title: '课程面板',
     subtitle: '实用工具',
     meta: 'TOOL / 2026',
@@ -49,6 +58,7 @@ const PAGE_TITLES = {
   top: '张刀宋｜未定态 / Between States',
   works: '作品｜张刀宋',
   'work-film': '沉没成本 · 动态短片｜张刀宋',
+  'work-qingping': '张刀宋净化 · 安卓软件下载｜张刀宋',
   'work-site': '未定态个人网站｜张刀宋',
   'work-dashboard': '课程面板｜张刀宋',
   about: '关于我｜张刀宋',
@@ -253,7 +263,7 @@ function WorksView({ sharedEntering }) {
       <div className="works-grid">
         {WORKS.map((work) => <WorkCard key={work.id} work={work} />)}
       </div>
-      <footer className="page-foot"><span>03 PROJECTS</span><span>MORE / IN PROGRESS</span></footer>
+      <footer className="page-foot"><span>04 PROJECTS</span><span>MORE / IN PROGRESS</span></footer>
     </section>
   );
 }
@@ -302,6 +312,60 @@ function WorkDetail({ work, nextWork, backPage, sharedEntering }) {
   );
 }
 
+function SoftwareDetail({ backPage, sharedEntering }) {
+  const work = WORKS[1];
+  return (
+    <section className={`view page work-detail app-detail${sharedEntering ? ' view--shared-enter' : ''}`} data-view="work-qingping" aria-label="张刀宋净化">
+      <a className="back-link-v2" href={`#${backPage}`}><span aria-hidden="true">←</span> 返回{backPage === 'top' ? '首页' : '作品'}</a>
+      <header className="work-detail__hero">
+        <div>
+          <p className="page-kicker"><span>02</span> / ANDROID TOOL / 2026</p>
+          <h1 tabIndex="-1">张刀宋净化</h1>
+          <p>{work.summary}</p>
+        </div>
+        <WorkVisual work={work} className="work-detail__visual" />
+      </header>
+
+      <section className="app-download" aria-labelledby="app-download-title">
+        <div>
+          <p className="page-kicker">LESS WAITING / 更容易上手</p>
+          <h2 id="app-download-title">把注意力，留给想看的内容。</h2>
+          <p>一个面向日常使用、也考虑长辈操作习惯的安卓小工具。在刚打开应用、出现可识别的广告跳过按钮时，尝试帮你完成点击。</p>
+          <p className="app-compatibility">Android 8.0 及以上 · 加强跳过需 Android 13 及以上 · 无需电脑</p>
+        </div>
+        <div className="app-download__action">
+          <a className="app-download__button" href="/downloads/zhangdaosong/ZhangDaoSongJinghua-0.2.3.apk" download="ZhangDaoSongJinghua-0.2.3.apk">下载安卓安装包 <span aria-hidden="true">↓</span></a>
+          <p>v0.2.3 · APK · 约 54 KB<br />已有旧版？直接覆盖安装，保留设置与次数。</p>
+          <a className="text-link" href="/downloads/zhangdaosong/quick-start.txt" download>下载文字使用说明 <span aria-hidden="true">↓</span></a>
+        </div>
+      </section>
+
+      <div className="app-features" aria-label="软件功能">
+        <article><span>01 / 自动帮忙</span><h2>少点一次“跳过”</h2><p>只在选中应用刚打开时，识别并尝试点击广告跳过按钮。Android 13 起可开启加强跳过；短时遮挡帮助防止手指误点。</p></article>
+        <article><span>02 / 一键配置</span><h2>少找几个开关</h2><p>首页一个大按钮，为当前能列出的应用开启保护、加强跳过和防误点。字体与点击区域加大，后续设置按步骤提示。</p></article>
+        <article><span>03 / 本地离线</span><h2>数据留在手机</h2><p>没有联网权限，不截图、不上传页面内容。本机只保存应用选择、规则和成功次数；随时可以单独关闭应用或全部暂停。</p></article>
+      </div>
+
+      <section className="app-guide" aria-labelledby="app-guide-title">
+        <div><p className="page-kicker">GET STARTED / 三步开始</p><h2 id="app-guide-title">装好后，跟着首页做。</h2></div>
+        <ol>
+          <li><h3>安装并打开软件</h3><p>在安卓手机上下载 APK，按系统提示确认安装。更新时直接覆盖原版本，不需要先卸载。</p></li>
+          <li><h3>点“一键配置全部应用 + 加强跳过”</h3><p>阅读说明并确认，软件会配置当前能列出的应用。新装应用需要再次配置；不想保护的应用可以单独关闭。</p></li>
+          <li><h3>按提示完成手机授权</h3><p>亲自开启本软件的无障碍、允许后台运行，并到手机设置允许开机自启。每次设置后返回软件，继续点首页大按钮。然后回桌面重新打开其他应用试一试。</p></li>
+        </ol>
+      </section>
+
+      <aside className="app-boundaries" aria-labelledby="app-boundaries-title">
+        <h2 id="app-boundaries-title">使用前，先知道这些。</h2>
+        <p>这是开屏广告辅助跳过工具，不能保证识别所有广告，也不能屏蔽“摇一摇”。无障碍权限范围较大，能够读取屏幕和代你操作；加强跳过仍可能误点或误跳使用引导。可在“应用”中关闭不需要的应用或加强跳过。</p>
+        <p>无障碍与厂商开机自启必须由本人在系统页面开启。开机自启显示的是用户的手动确认，软件无法核验厂商开关。分身、工作空间、后台清理和不同机型可能影响效果；Android 13 以下使用普通跳过。</p>
+        <details><summary>核对安装包 SHA-256</summary><code>c1cef88c9a37fa758f188a023e11a512b2abe2df77c22f96096a6a45a3cc3253</code></details>
+      </aside>
+      <a className="next-work" href="#work-site"><span>NEXT PROJECT / 03</span><strong>未定态 · 个人网站</strong><i aria-hidden="true">→</i></a>
+    </section>
+  );
+}
+
 function FilmDetail({ backPage, sharedEntering }) {
   const playerRef = useRef(null);
   useEffect(() => {
@@ -345,7 +409,7 @@ function FilmDetail({ backPage, sharedEntering }) {
         <p className="film-boundary">片中案例为虚构，图表用于概念示意。继续或离开，都需要结合当下的真实处境判断。</p>
         <div className="film-credits"><span>作品呈现 / 张刀宋 · 2026</span><span>内容参考 / <a href="https://doi.org/10.1016/0749-5978(85)90049-4" target="_blank" rel="noreferrer">Arkes &amp; Blumer, 1985 ↗</a> · <a href="https://doi.org/10.1007/s12144-016-9529-9" target="_blank" rel="noreferrer">Rego et al., 2018 ↗</a></span></div>
       </div>
-      <a className="next-work" href="#work-site"><span>NEXT PROJECT / 02</span><strong>未定态 · 个人网站</strong><i aria-hidden="true">→</i></a>
+      <a className="next-work" href="#work-qingping"><span>NEXT PROJECT / 02</span><strong>张刀宋净化</strong><i aria-hidden="true">→</i></a>
     </section>
   );
 }
@@ -421,8 +485,9 @@ function ContactView() {
 function CurrentView({ page, backPage, sharedEntering }) {
   if (page === 'works') return <WorksView sharedEntering={sharedEntering} />;
   if (page === 'work-film') return <FilmDetail backPage={backPage} sharedEntering={sharedEntering} />;
-  if (page === 'work-site') return <WorkDetail work={WORKS[1]} nextWork={WORKS[2]} backPage={backPage} sharedEntering={sharedEntering} />;
-  if (page === 'work-dashboard') return <WorkDetail work={WORKS[2]} nextWork={WORKS[0]} backPage={backPage} sharedEntering={sharedEntering} />;
+  if (page === 'work-qingping') return <SoftwareDetail backPage={backPage} sharedEntering={sharedEntering} />;
+  if (page === 'work-site') return <WorkDetail work={WORKS[2]} nextWork={WORKS[3]} backPage={backPage} sharedEntering={sharedEntering} />;
+  if (page === 'work-dashboard') return <WorkDetail work={WORKS[3]} nextWork={WORKS[0]} backPage={backPage} sharedEntering={sharedEntering} />;
   if (page === 'slices') return <SlicesView />;
   if (page === 'about') return <AboutView />;
   if (page === 'contact') return <ContactView />;

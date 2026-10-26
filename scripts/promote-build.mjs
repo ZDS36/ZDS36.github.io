@@ -10,7 +10,8 @@ const files = [
   [path.join('assets', 'site.js'), path.join('assets', 'site.js')],
   [path.join('assets', 'site.css'), path.join('assets', 'site.css')],
   [path.join('assets', 'site.jpg'), path.join('assets', 'site.jpg')],
-  ...['film.mp4', 'poster.jpg', 'past.jpg', 'weight.jpg', 'release.jpg'].map(name => [path.join('media', 'sunk-cost', name), path.join('media', 'sunk-cost', name)])
+  ...['film.mp4', 'poster.jpg', 'past.jpg', 'weight.jpg', 'release.jpg'].map(name => [path.join('media', 'sunk-cost', name), path.join('media', 'sunk-cost', name)]),
+  ...['ZhangDaoSongJinghua-0.2.3.apk', 'quick-start.txt'].map(name => [path.join('downloads', 'zhangdaosong', name), path.join('downloads', 'zhangdaosong', name)])
 ];
 
 function assertInside(base, candidate, label) {
