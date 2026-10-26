@@ -469,6 +469,12 @@ h1:focus, .site-main:focus { outline: none; }
 .film-player__shape { display: none; }
 .film-player__note { display: flex; justify-content: space-between; gap: 1rem; margin: .9rem 0 0; color: #bca58c; font-size: .72rem; }
 .film-player__note > span { color: var(--faint); }
+.film-alternatives { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem 1.5rem; margin-top: 1.5rem; padding-block: 1.2rem; border-block: 1px solid var(--line); }
+.film-alternatives > div { flex: 1; min-width: min(100%, 18rem); }
+.film-alternatives > div > span { color: #e8c7a4; font-size: .85rem; }
+.film-alternatives p { margin: .4rem 0 0; color: var(--muted); font-size: .75rem; line-height: 1.8; }
+.film-html-link { display: inline-flex; align-items: center; justify-content: space-between; gap: 1.5rem; min-height: 48px; padding: .7rem 1rem; color: var(--ink); background: var(--accent); font-size: .85rem; }
+.film-error { padding: 1rem; border: 1px solid var(--coral); color: var(--coral); font-size: .85rem; }
 .film-story { display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(2rem, 6vw, 7rem); padding-block: clamp(3rem, 7vw, 7rem); }
 .film-story blockquote { margin: 0; color: #e8c7a4; font: clamp(2.2rem, 4vw, 4.5rem)/1.5 var(--display-font); }
 .film-story p, .film-making > p:not(.page-kicker) { margin: 0 0 1rem; color: var(--muted); font-size: .95rem; line-height: 2; }

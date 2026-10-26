@@ -28,7 +28,7 @@ npm run promote
 
 这样既能保留 React + Vite 的开发体验，也能继续使用当前 GitHub Pages 从 `main` 分支根目录发布的方式。
 
-《沉没成本》作为首页精选与作品区首项展示，独立观影页为 `#work-film`。影片与四张真实成片截图保存在 `public/media/sunk-cost/`，构建后由 promote 按明确文件名同步到根目录 `media/sunk-cost/`。网页使用约 21.4 MB 的 1600×900 / 30fps 版本，点击后播放；高码率母版与影片工程不进入网站仓库。
+《沉没成本》作为首页精选与作品区首项展示，独立观影页为 `#work-film`。网页使用 2026-10-26 的润色轻量成片：约 5.84 MB、960×540 / 25fps、H.264 + AAC，播放索引前置，点击后播放；同时提供带手机触控按钮的 HTML 动画版与直接视频链接。版本参数避免旧视频缓存。影片、HTML 与截图保存在 `public/media/sunk-cost/`，构建后由 promote 按明确文件名同步到根目录 `media/sunk-cost/`。`npm run check` 会验证 MP4 索引位置、体积和源文件一致性。高码率母版与影片工程保持本地原样。
 
 「张刀宋净化」位于作品区第二项，介绍与下载页为 `#work-qingping`，涵盖功能、适用系统、安装配置、权限说明和使用限制。0.2.3 APK 与文字说明保存在 `public/downloads/zhangdaosong/`，通过原有 build / check / promote 流程同步到根目录 `downloads/zhangdaosong/`。校验会核对 APK 的已验证 SHA-256；签名私钥、手机数据和本地调试材料不进入网站。
 

@@ -2,6 +2,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import './check-film-media.mjs';
 
 const repositoryRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const buildRoot = path.join(repositoryRoot, '.site-build');
@@ -68,10 +69,10 @@ for (const relativePath of ['.site-build/index.html', '.site-build/assets/site.j
   }
 }
 
-for (const name of ['film.mp4', 'poster.jpg', 'past.jpg', 'weight.jpg', 'release.jpg']) {
+for (const name of ['film.mp4', 'poster.jpg', 'past.jpg', 'weight.jpg', 'release.jpg', 'animation.html', 'animation-web.css', 'animation-web.js', 'Smiley-Sans-LICENSE.txt', 'LXGW-WenKai-LICENSE.txt']) {
   const relative = path.join('media', 'sunk-cost', name);
   const [source, built] = await Promise.all([readFile(path.join(repositoryRoot, 'public', relative)), readFile(path.join(buildRoot, relative))]);
-  if (source.length < 1024 || createHash('sha256').update(source).digest('hex') !== createHash('sha256').update(built).digest('hex')) {
+  if (source.length < 64 || createHash('sha256').update(source).digest('hex') !== createHash('sha256').update(built).digest('hex')) {
     throw new Error(`Film asset is missing or differs from source: ${name}`);
   }
 }

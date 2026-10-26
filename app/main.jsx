@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 import avatarUrl from './avatar.jpg';
 
+const FILM_URL = '/media/sunk-cost/film.mp4?v=20261026-polished';
+const FILM_HTML_URL = '/media/sunk-cost/animation.html?v=20261026-polished';
+const FILM_POSTER = '/media/sunk-cost/poster.jpg?v=20261026-polished';
+
 const PAGE_IDS = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'slices', 'about', 'contact'];
 const CHAPTERS = ['top', 'works', 'slices', 'about', 'contact'];
 
@@ -173,7 +177,7 @@ function WorkVisual({ work, className = '' }) {
       <span className="work-visual__caption">{work.meta}</span>
       <span className="work-visual__number">{work.number}</span>
       <span className="work-visual__shape">
-        {work.id === 'work-film' && <img src="/media/sunk-cost/poster.jpg" alt="" width="1600" height="900" />}
+        {work.id === 'work-film' && <img src={FILM_POSTER} alt="" width="1600" height="900" />}
       </span>
       <strong className="work-visual__title">{work.title}</strong>
     </div>
@@ -368,6 +372,7 @@ function SoftwareDetail({ backPage, sharedEntering }) {
 
 function FilmDetail({ backPage, sharedEntering }) {
   const playerRef = useRef(null);
+  const [playbackError, setPlaybackError] = useState(false);
   useEffect(() => {
     const pauseWhenHidden = () => { if (document.hidden) playerRef.current?.pause(); };
     document.addEventListener('visibilitychange', pauseWhenHidden);
@@ -384,13 +389,19 @@ function FilmDetail({ backPage, sharedEntering }) {
         <span className="film-heading__meta">02:18 · 动态文字 / 粒子 / 音乐</span>
       </header>
       <div className="film-player" data-work-visual="work-film">
-        <video ref={playerRef} controls playsInline preload="none" poster="/media/sunk-cost/poster.jpg" width="1600" height="900" aria-label="沉没成本完整短片，约2分18秒，音乐与屏幕文字，无旁白">
-          <source src="/media/sunk-cost/film.mp4" type="video/mp4" />
-          当前浏览器无法播放视频，<a href="/media/sunk-cost/film.mp4">打开完整短片</a>。
+        <video ref={playerRef} controls playsInline preload="none" poster={FILM_POSTER} width="960" height="540" onError={() => setPlaybackError(true)} aria-label="沉没成本完整短片，约2分18秒，音乐与屏幕文字，无旁白">
+          <source src={FILM_URL} type="video/mp4" onError={() => setPlaybackError(true)} />
+          当前浏览器无法播放视频，<a href={FILM_HTML_URL}>打开 HTML 动画版</a>。
         </video>
         <span className="work-visual__shape film-player__shape" aria-hidden="true" />
       </div>
       <p className="film-player__note">点击播放 · 建议开启声音，全屏观看<span>完整短片 / 16:9</span></p>
+      <div className="film-alternatives">
+        <div><span>两种方式，观看同一支短片。</span><p>当前为省流视频 · 约 5.8 MB。也可以打开 HTML 动画版，横屏观看。</p></div>
+        <a className="film-html-link" href={FILM_HTML_URL}>HTML 动画版 <span aria-hidden="true">↗</span></a>
+        <a className="text-link" href={FILM_URL}>直接打开视频 <span aria-hidden="true">↗</span></a>
+      </div>
+      {playbackError && <p className="film-error" role="alert">视频暂时无法加载，请尝试上方的 HTML 动画版，或直接打开视频。</p>}
       <div className="film-story">
         <blockquote>“都已经在一起<br />这么久了。”</blockquote>
         <div>

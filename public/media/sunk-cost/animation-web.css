@@ -1,0 +1,31 @@
+#web-stage { position: fixed; inset: 0 0 4.5rem; overflow: hidden; contain: strict; }
+#setup { position: fixed; z-index: 20; padding: 1.5rem 1.25rem 6rem; overflow: auto; }
+#setup-panel { width: min(100%, 48rem); margin: auto; }
+.setup-eyebrow { margin-bottom: 1.5rem; font-size: .65rem; letter-spacing: .15em; }
+#setup h1 { font-size: clamp(2.6rem, 7vw, 5.5rem); }
+.setup-line { width: 4rem; height: 3px; margin: 1.5rem auto; }
+#setup .setup-subtitle { margin-bottom: 1.5rem; font-size: clamp(1rem, 2vw, 1.4rem); }
+#start { min-height: 48px; padding: .8rem 1.5rem; font-size: 1.1rem; }
+#ready-state, #error { min-height: 1.5rem; margin-top: 1rem; font-size: .85rem; }
+#setup .hint { margin-top: 1rem; font-size: .75rem; line-height: 1.8; }
+.web-controls { position: fixed; z-index: 30; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; gap: .6rem; padding: .5rem max(.75rem, env(safe-area-inset-right)) max(.5rem, env(safe-area-inset-bottom)); color: #f4e4c6; background: #15110fe8; font: .8rem/1.4 system-ui, sans-serif; }
+.web-controls button, .web-controls a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: .4rem .75rem; border: 1px solid #b99065; border-radius: 4px; color: inherit; background: transparent; text-decoration: none; }
+.web-controls button:disabled { opacity: .4; }
+.web-controls input { flex: 1; min-width: 3rem; max-width: 35rem; height: 44px; accent-color: #c97942; }
+.web-controls output { min-width: 6rem; font-size: .7rem; text-align: center; }
+.web-status { position: fixed; z-index: 31; bottom: 4.5rem; left: 50%; max-width: 90vw; transform: translateX(-50%); padding: .5rem .8rem; color: #fff4e0; background: #3c2018; font: .8rem/1.5 system-ui, sans-serif; }
+.web-status:empty { display: none; }
+@media (max-width: 600px) {
+  #web-stage { bottom: 7rem; }
+  .web-controls { flex-wrap: wrap; gap: .35rem; }
+  .web-controls input { order: 1; flex-basis: 65%; max-width: none; }
+  .web-controls output { order: 2; }
+  .web-controls button, .web-controls a { flex: 1; padding-inline: .4rem; }
+  .web-status { bottom: 7.5rem; }
+}
+@media (max-height: 500px) {
+  #setup { padding: .8rem 1rem 4.5rem; }
+  .setup-eyebrow, .setup-line, #setup .hint { display: none; }
+  #setup h1 { font-size: 2rem; }
+  #setup .setup-subtitle { margin: .75rem 0; font-size: .85rem; }
+}

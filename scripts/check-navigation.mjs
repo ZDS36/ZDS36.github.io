@@ -92,7 +92,7 @@ try {
   await page.goto(`${base}#top`);
   await settled('top', false);
   assert.equal(await page.locator('.featured-work').getAttribute('href'), '#work-film');
-  assert.equal(await page.locator('.work-card').count(), 3);
+  assert.equal(await page.locator('.work-card').count(), 4);
   assert.deepEqual(videoRequests, [], 'Homepage must not download the film.');
   await page.locator('.featured-work').click();
   await settled('work-film');
@@ -102,7 +102,7 @@ try {
   assert.equal(await video.evaluate(el => el.paused && el.controls && el.playsInline && !el.autoplay), true);
   assert.deepEqual(videoRequests, [], 'Film must wait for a playback request.');
   await video.evaluate(async el => { window.testFilm = el; await el.play(); });
-  await page.waitForFunction(() => window.testFilm.currentTime > .2 && window.testFilm.videoWidth === 1600);
+  await page.waitForFunction(() => window.testFilm.currentTime > .2 && window.testFilm.videoWidth === 960);
   assert(Math.abs(await video.evaluate(el => el.duration) - 137.67) < .1, 'Film duration differs from the delivered cut.');
   await video.evaluate(el => { el.currentTime = 120; });
   await page.waitForFunction(() => !window.testFilm.seeking && window.testFilm.currentTime >= 120);
