@@ -1,6 +1,6 @@
 # 私密留言接收端
 
-这是网站的服务端接收接口，替代可直接投递的 Formspree 地址。2026-11-04 已确认账户为 Free 并部署，密钥只保存在 Cloudflare secrets；正常验证后的云端收件与关闭旧表单仍需验收。
+这是网站的服务端接收接口，替代可直接投递的 Formspree 地址。2026-11-04 已确认账户为 Free 并部署，密钥只保存在 Cloudflare secrets；修复 SMTP 连接后已通过云端真实发信测试，网页正常提交、QQ 实际收件与关闭旧表单仍需验收。
 
 ## 已实现的规则
 
@@ -15,7 +15,7 @@
 
 选择 Cloudflare Workers **Free**，使用免费支持的 SQLite Durable Objects。不要开通 Workers Paid 或任何付费附加项。免费额度超出时请求失败，不自动转为付费续用。Cloudflare 免费额度和 QQ SMTP 的风控限制仍以服务方为准，不能承诺永久可用或不限量。
 
-该方案不要求买域名；Worker 提供 workers.dev 地址，通知使用已有 QQ 邮箱 SMTP，不经过 Formspree 的每月 50 次额度。本机 QQ SMTP 的 TLS 与认证已通过，但这不能证明 Cloudflare 出口已获准发信。网页切换后必须正常通过验证码提交，确认 QQ 实际收件，才能宣称整条链路已验收。
+该方案不要求买域名；Worker 提供 workers.dev 地址，通知使用已有 QQ 邮箱 SMTP，不经过 Formspree 的每月 50 次额度。云端测试发现 Nodemailer 默认预解析 IP 的连接在 Workers 报 ESOCKET；原生主机名 TLS 连接可用，因此通过 getSocket 保留主机名、SNI 与证书验证。使用同一发送模块的远程预览已成功发出一封测试邮件；这不能替代网页正常通过验证码提交和 QQ 实际收件的验收。
 
 ## 部署步骤（不要把任何密钥发到聊天或提交 Git）
 
