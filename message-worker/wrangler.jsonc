@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "between-states-messages",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-11-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  "vars": { "ALLOWED_ORIGIN": "https://zds36.github.io" },
+  "durable_objects": {
+    "bindings": [{ "name": "MESSAGE_BUDGET", "class_name": "MessageBudget" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MessageBudget"] }]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "between-states-private-messages",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs && node test/runtime.mjs",
+    "deploy": "wrangler deploy",
+    "login": "wrangler login"
+  },
+  "dependencies": { "nodemailer": "10.3.1" },
+  "devDependencies": { "wrangler": "4.157.0" }
+}

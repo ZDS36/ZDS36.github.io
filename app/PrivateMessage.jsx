@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const formId = import.meta.env.VITE_FORMSPREE_FORM_ID || '';
-const endpoint = /^[a-zA-Z0-9]{6,64}$/.test(formId) ? `https://formspree.io/f/${formId}` : '';
+const workerUrl = (import.meta.env.VITE_MESSAGE_ENDPOINT || '').trim();
+const endpoint = /^https:\/\/[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev\/message$/.test(workerUrl) ? workerUrl : '';
 const siteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY || '').trim();
 const configured = Boolean(endpoint && siteKey);
 
@@ -22,7 +22,7 @@ export default function PrivateMessage() {
       if (!active) return;
       try {
         widget.current = window.turnstile.render(challenge.current, {
-          sitekey: siteKey, theme: 'dark', size: 'compact', 'response-field': false,
+          sitekey: siteKey, action: 'private-message', theme: 'dark', size: 'compact', 'response-field': false,
           callback: () => { if (active) setVerification('ready'); },
           'expired-callback': () => { if (active) setVerification('expired'); },
           'error-callback': failed
@@ -79,11 +79,17 @@ export default function PrivateMessage() {
     try {
       const response = await fetch(endpoint, {
         method: 'POST', body: data, headers: { Accept: 'application/json' },
-        credentials: 'omit', signal: AbortSignal.timeout(15000)
+        credentials: 'omit', signal: AbortSignal.timeout(30000)
       });
       if (response.status === 429) {
         setStatus('error');
-        setFeedback('当前留言通道提交过于频繁，请稍后再试。内容已保留。');
+        const details = await response.json().catch(() => ({}));
+        const messages = {
+          daily_limit: '这个网络今天已达到 3 次投递上限，请明天再来。内容已保留。',
+          cooldown: '两次投递请至少间隔 60 秒。内容已保留。',
+          site_limit: '今日留言通道已达到保护上限，请明天再来。内容已保留。'
+        };
+        setFeedback(messages[details.code] || '当前留言通道提交过于频繁，请稍后再试。内容已保留。');
         return;
       }
       if (!response.ok) throw new Error('Message was not accepted.');
@@ -118,7 +124,7 @@ export default function PrivateMessage() {
             <label htmlFor="message-email">你的邮箱 <span>选填，方便我回复</span><input id="message-email" name="email" type="email" autoComplete="email" maxLength="254" placeholder="you@example.com" /></label>
           </div>
           <label htmlFor="message-text">想说的话<textarea id="message-text" name="message" required maxLength="2000" rows="6" placeholder="在这里写下你想说的话…" aria-describedby="message-privacy message-feedback" /></label>
-          <p className="private-message__privacy" id="message-privacy">最多 2000 字。留言不会在网站公开，由 Formspree 接收并转发；Cloudflare 提供人机验证。</p>
+          <p className="private-message__privacy" id="message-privacy">最多 2000 字。留言不会在网站公开。Cloudflare 接收并验证，由 QQ 邮箱转发。同一网络每天最多 3 次，两次间隔至少 60 秒，每天零点（北京时间）重置。</p>
           {configured && <div className="private-message__verification">
             <div ref={challenge} />
             <p role="status">{verification === 'ready' ? '验证已通过，可以寄出。' : verification === 'error' ? '验证暂时不可用，请先复制留言，再刷新页面重试。' : verification === 'expired' ? '验证已过期，请在验证框重新验证。' : '请完成上方验证；若没有出现验证框，请先复制留言，再刷新页面重试。'}</p>

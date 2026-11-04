@@ -6,8 +6,6 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const configured = new URL(process.argv[2] || 'http://127.0.0.1:4175');
 const unconfigured = new URL(process.argv[3] || 'http://127.0.0.1:4177');
-const expectedFormId = process.argv[4] || 'qacheckx';
-assert(/^[a-zA-Z0-9]{6,64}$/.test(expectedFormId));
 for (const url of [configured, unconfigured]) assert(['127.0.0.1', 'localhost'].includes(url.hostname));
 const browser = await chromium.launch({ headless: true, chromiumSandbox: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
 try {
@@ -17,6 +15,7 @@ try {
   let outcome = 'success';
   let finishRequest;
   let captchaFails = false;
+  let rateCode = '';
   await page.route('https://challenges.cloudflare.com/**', route => captchaFails ? route.abort() : route.fulfill({
     contentType: 'text/javascript', body: `
       window.captchaScriptAsync = document.currentScript.async || document.currentScript.defer;
@@ -45,13 +44,15 @@ try {
     await page.waitForFunction(() => !document.querySelector('.private-message__submit').disabled);
   };
   page.on('pageerror', error => errors.push(error.message));
-  await page.route('https://formspree.io/**', async route => {
+  const interceptSubmission = async route => {
     requests.push(route.request().postData());
-    assert.equal(new URL(route.request().url()).pathname, `/f/${expectedFormId}`);
+    assert.equal(new URL(route.request().url()).pathname, '/message');
     if (outcome === 'network') return route.abort();
     if (outcome === 'pending') await new Promise(resolve => { finishRequest = resolve; });
-    await route.fulfill({ status: outcome === 'error' ? 429 : 200, contentType: 'application/json', body: outcome === 'error' ? '{"errors":[{"message":"Rate limit"}]}' : '{"ok":true}' });
-  });
+    await route.fulfill({ status: outcome === 'error' ? 429 : 200, contentType: 'application/json', body: outcome === 'error' ? JSON.stringify({ code: rateCode }) : '{"ok":true}' });
+  };
+  await page.route('https://formspree.io/**', () => { assert.fail('Retired Formspree endpoint must not be used.'); });
+  await page.route('https://qa-messages.qa.workers.dev/**', interceptSubmission);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto(`${unconfigured}#contact`);
   await page.locator('.private-message__form').waitFor();
@@ -104,6 +105,13 @@ try {
   assert(await submit.isDisabled(), 'Expired tokens must disable submission.');
   await page.locator('.private-message__form').evaluate(form => form.requestSubmit());
   assert.equal(requests.length, 2, 'Expired tokens must not send.');
+  for (const [code, copy] of [['daily_limit', '3 次投递上限'], ['cooldown', '60 秒'], ['site_limit', '保护上限']]) {
+    rateCode = code; outcome = 'error';
+    await verify(); await submit.click();
+    await page.waitForFunction(copy => document.getElementById('message-feedback').textContent.includes(copy), copy);
+    assert.equal(await message.inputValue(), '这是一条仅用于本地验证的留言。');
+  }
+  rateCode = '';
   await verify();
   outcome = 'pending';
   const previousRequests = requests.length;

@@ -18,23 +18,15 @@
 
 ## 私密留言与邮件通知
 
-联系区提供私密留言，访客可填写称呼、回复邮箱（两者选填）和最多 2000 字正文。内容通过 Formspree 接收并转发，不在网站公开，也不写入浏览器本地存储。收件邮箱只在 Formspree 后台配置，不放进网页源码或 Vite 环境变量。
+联系区通过 Cloudflare Worker 接收私密留言，由 QQ SMTP 发到站长自己的邮箱。访客可填写称呼、回复邮箱（两者选填）和最多 2000 字正文；留言不公开，不写入浏览器存储。收件邮箱、SMTP 授权码、Turnstile Secret Key 和 IP 哈希密钥只放 Worker secrets，不能进入网页或 VITE_ 变量。
 
-接通步骤：
+服务端在验证 Turnstile 的 hostname 与 action 后，以 SQLite Durable Object 事务限制同一 IP 每天 3 次、间隔至少 60 秒、全站每天 20 次，按北京时间零点重置。SMTP 失败也可能消耗次数，防止超时后重复发送绕过限额。共用网络会共用配额，换 IP 不能被视作同一个人。
 
-1. 在 Formspree 创建表单，设置收件邮箱并完成邮箱验证，确认通知已开启。
-2. 将 `.env.example` 复制为 `.env.local`，填写公开表单 ID：`VITE_FORMSPREE_FORM_ID=实际ID`，以及 Cloudflare Turnstile 的公开 `VITE_TURNSTILE_SITE_KEY=实际SiteKey`。两者都不是密码；邮箱密码、SMTP 授权码和 Turnstile Secret Key 绝不能写入 VITE 变量。
-3. Cloudflare Turnstile 创建 Managed 模式组件，只允许正式域名 `zds36.github.io`（如更换域名，应同步修改）。Secret Key 只填入 Formspree → 表单 Settings → CAPTCHA → Turnstile，保存并启用 CAPTCHA。Formshield 保持开启。项目 Settings → Restrict to Domain 填 `zds36.github.io`，不带 `https://`。
-4. 重新构建并校验，再更新发布文件。未配置 ID 或 Site Key 时留言暂未开放；验证加载失败、未通过或过期时禁止提交，不降级为免验证发送。每次请求后重置验证，失败保留正文。
-5. 正式发布前确认 Formspree 后台 CAPTCHA 的确已启用，未带有效 token 的请求不能进入正常留言通知；再通过正常访客验证提交一条留言，确认邮箱收到。前端模拟测试不能证明服务端防护生效。开启域名限制后，本地预览来源会被归入垃圾箱，不能当成正式收件测试。
+部署与凭据保存见 [接收端说明](message-worker/README.md)。`.env.local` 只填写公开的 `VITE_MESSAGE_ENDPOINT`（Worker URL 加 `/message`）和 `VITE_TURNSTILE_SITE_KEY`。配置缺失或错误时禁止提交，不回退旧 Formspree；验证码未通过、过期或加载失败时也禁止发送，提交失败保留正文。
 
-本地交互检查模拟 CAPTCHA 和提交接口，不会向真实邮箱发送测试消息。在一个仅测试使用的开发终端设置 `VITE_FORMSPREE_FORM_ID=qacheckx`、`VITE_TURNSTILE_SITE_KEY=local-mock-site-key` 并启动 4175 端口开发服务器；另一个终端设置 `VITE_FORMSPREE_FORM_ID=disabled-for-test` 并启动 4177 端口开发服务器，覆盖本机正式配置以验证未接通状态。然后运行 `node scripts/check-private-message.mjs`。这些测试值不应写入 `.env.local` 或正式构建。
+只使用 Workers Free 与现有 QQ 邮箱，不开通付费套餐。旧 Formspree 表单必须在其后台关闭 Form Enabled，否则历史公开地址仍可绕过新接口。真实收件仍需由正常访客完成人机验证后提交确认；前端模拟、本地 SMTP 认证成功都不能替代这一步。
 
-也可对已配置的本地正式构建预览运行 `node scripts/check-private-message.mjs http://127.0.0.1:4176 http://127.0.0.1:4177 实际公开表单ID`；所有验证码和投递请求仍由测试拦截模拟，不验证真实服务端状态。
-
-Formspree 是第三方处理方，服务额度与反垃圾设置以其后台为准。尚未创建并验证真实表单时，不能视为已接通邮件通知。
-
-防护边界：Formspree 的表单整体限流为每分钟 20 次 POST，并非本站自行设置的单 IP 配额；网页显示 429 限流提示并保留正文。域名限制依靠 Referer，不能单独阻止伪造请求。Turnstile 必须由 Formspree 服务端核验才有效，也不能完全阻止真人持续恶意留言。若出现这种滥用，需另加服务端按来源限流或暂时关闭表单。不要压测真实投递接口。[Formspree 限制说明](https://help.formspree.io/articles/form-and-project-settings/system-limits)、[Turnstile 接入说明](https://help.formspree.io/articles/form-and-project-settings/protecting-your-forms-with-cloudflare-turnstile)。
+本地交互测试使用 4175 与 4177 两个开发服务器：前者设置 `VITE_MESSAGE_ENDPOINT=https://qa-messages.qa.workers.dev/message`、`VITE_TURNSTILE_SITE_KEY=local-mock-site-key`，后者将这两个变量显式置空。运行 `node scripts/check-private-message.mjs http://127.0.0.1:4175 http://127.0.0.1:4177`。验证码和请求全部在本地拦截，不发送邮件；测试值不能用于正式构建。
 
 ## 本地开发
 

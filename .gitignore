@@ -6,3 +6,8 @@ app/.vite/
 npm-debug.log*
 .env.local
 .env.*.local
+.wrangler/
+.dev.vars
+.dev.vars.*
+.cloudflare-token.dpapi
+.message-secrets.dpapi
