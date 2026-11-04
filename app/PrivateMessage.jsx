@@ -17,7 +17,8 @@ export default function PrivateMessage() {
     if (!configured) return;
     let active = true;
     const failed = () => { if (active) setVerification('error'); };
-    const render = () => window.turnstile.ready(() => {
+    // The load event handles async scripts; Turnstile.ready() rejects async/defer loading.
+    const render = () => {
       if (!active) return;
       try {
         widget.current = window.turnstile.render(challenge.current, {
@@ -27,7 +28,7 @@ export default function PrivateMessage() {
           'error-callback': failed
         });
       } catch { failed(); }
-    });
+    };
     let script = document.getElementById('message-turnstile');
     if (!script) {
       script = document.createElement('script');

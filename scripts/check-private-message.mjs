@@ -19,8 +19,12 @@ try {
   let captchaFails = false;
   await page.route('https://challenges.cloudflare.com/**', route => captchaFails ? route.abort() : route.fulfill({
     contentType: 'text/javascript', body: `
+      window.captchaScriptAsync = document.currentScript.async || document.currentScript.defer;
       window.turnstile = {
-        ready: callback => callback(),
+        ready: callback => {
+          if (window.captchaScriptAsync) throw new Error('[Cloudflare Turnstile] Remove async/defer before using turnstile.ready(). Code: 3857');
+          callback();
+        },
         render: (container, options) => {
           container.innerHTML = '<div style="width:150px;height:140px;border:1px solid #49513c;padding:12px;box-sizing:border-box">本地验证占位</div>';
           window.captcha = { options, token: '', resets: 0 };
@@ -32,7 +36,11 @@ try {
       };`
   }));
   const verify = async () => {
-    await page.waitForFunction(() => window.captcha);
+    try {
+      await page.waitForFunction(() => window.captcha, null, { timeout: 2000 });
+    } catch {
+      assert.fail(`Turnstile did not render. Browser errors: ${errors.join('; ') || '(none)'}`);
+    }
     await page.evaluate(() => { window.captcha.token = 'local-mock-token'; window.captcha.options.callback('local-mock-token'); });
     await page.waitForFunction(() => !document.querySelector('.private-message__submit').disabled);
   };
