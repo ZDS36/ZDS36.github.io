@@ -1,0 +1,147 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { mkdir } from 'node:fs/promises';
+
+const require = createRequire(import.meta.url);
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const configured = new URL(process.argv[2] || 'http://127.0.0.1:4175');
+const unconfigured = new URL(process.argv[3] || 'http://127.0.0.1:4177');
+const expectedFormId = process.argv[4] || 'qacheckx';
+assert(/^[a-zA-Z0-9]{6,64}$/.test(expectedFormId));
+for (const url of [configured, unconfigured]) assert(['127.0.0.1', 'localhost'].includes(url.hostname));
+const browser = await chromium.launch({ headless: true, chromiumSandbox: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
+try {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  const requests = [];
+  const errors = [];
+  let outcome = 'success';
+  let finishRequest;
+  let captchaFails = false;
+  await page.route('https://challenges.cloudflare.com/**', route => captchaFails ? route.abort() : route.fulfill({
+    contentType: 'text/javascript', body: `
+      window.turnstile = {
+        ready: callback => callback(),
+        render: (container, options) => {
+          container.innerHTML = '<div style="width:150px;height:140px;border:1px solid #49513c;padding:12px;box-sizing:border-box">本地验证占位</div>';
+          window.captcha = { options, token: '', resets: 0 };
+          return 'mock-widget';
+        },
+        getResponse: () => window.captcha.token,
+        reset: () => { window.captcha.token = ''; window.captcha.resets++; },
+        remove: () => { window.captcha = null; }
+      };`
+  }));
+  const verify = async () => {
+    await page.waitForFunction(() => window.captcha);
+    await page.evaluate(() => { window.captcha.token = 'local-mock-token'; window.captcha.options.callback('local-mock-token'); });
+    await page.waitForFunction(() => !document.querySelector('.private-message__submit').disabled);
+  };
+  page.on('pageerror', error => errors.push(error.message));
+  await page.route('https://formspree.io/**', async route => {
+    requests.push(route.request().postData());
+    assert.equal(new URL(route.request().url()).pathname, `/f/${expectedFormId}`);
+    if (outcome === 'network') return route.abort();
+    if (outcome === 'pending') await new Promise(resolve => { finishRequest = resolve; });
+    await route.fulfill({ status: outcome === 'error' ? 429 : 200, contentType: 'application/json', body: outcome === 'error' ? '{"errors":[{"message":"Rate limit"}]}' : '{"ok":true}' });
+  });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(`${unconfigured}#contact`);
+  await page.locator('.private-message__form').waitFor();
+  assert(await page.locator('.private-message__submit').isDisabled(), 'An unconnected form must not accept messages.');
+  assert.equal(requests.length, 0);
+  assert.equal(await page.locator('#message-turnstile').count(), 0, 'An unconfigured form must not load CAPTCHA.');
+
+  await page.goto(`${configured}#contact`);
+  const message = page.locator('#message-text');
+  const email = page.locator('#message-email');
+  const submit = page.locator('.private-message__submit');
+  const feedback = page.locator('#message-feedback');
+  await page.waitForFunction(() => !document.getElementById('message-text').disabled);
+  assert(await submit.isDisabled(), 'No submission before verification.');
+  await message.fill('没有验证码时必须拦截。');
+  await page.locator('.private-message__form').evaluate(form => form.requestSubmit());
+  assert.equal(requests.length, 0, 'Programmatic submission without a token must not send.');
+  await verify();
+  await message.fill('   ');
+  await submit.click();
+  await page.waitForFunction(() => document.getElementById('message-feedback').textContent.includes('写下一点内容'));
+  assert.equal(requests.length, 0, 'Whitespace-only content must not be sent.');
+  await message.fill('这是一条仅用于本地验证的留言。');
+  await email.fill('invalid');
+  await submit.click();
+  assert.equal(requests.length, 0, 'Malformed email must not be sent.');
+  await email.fill('');
+  outcome = 'error';
+  await submit.click();
+  await page.waitForFunction(() => document.getElementById('message-feedback').textContent.includes('内容已保留'));
+  assert((await feedback.textContent()).includes('提交过于频繁'), 'Server rate limits need a specific, honest error.');
+  assert.equal(await message.inputValue(), '这是一条仅用于本地验证的留言。');
+  assert(!requests[0].includes('name="email"'), 'Blank reply email should be omitted.');
+  assert(requests[0].includes('name="cf-turnstile-response"') && requests[0].includes('local-mock-token'), 'Submission must carry the CAPTCHA token.');
+  assert.equal(await page.evaluate(() => window.captcha.resets), 1, 'Used tokens must be reset even after HTTP errors.');
+  assert(await submit.isDisabled());
+
+  outcome = 'network';
+  await verify();
+  await submit.click();
+  await page.waitForFunction(() => !document.querySelector('.private-message__form').getAttribute('aria-busy') || document.querySelector('.private-message__form').getAttribute('aria-busy') === 'false');
+  assert.equal(await message.inputValue(), '这是一条仅用于本地验证的留言。');
+  assert((await feedback.textContent()).includes('内容已保留'));
+  assert.equal(await page.evaluate(() => window.captcha.resets), 2);
+
+  await email.fill('visitor@example.com');
+  await page.locator('#message-name').fill('  访客  ');
+  await verify();
+  await page.evaluate(() => { window.captcha.token = ''; window.captcha.options['expired-callback'](); });
+  assert(await submit.isDisabled(), 'Expired tokens must disable submission.');
+  await page.locator('.private-message__form').evaluate(form => form.requestSubmit());
+  assert.equal(requests.length, 2, 'Expired tokens must not send.');
+  await verify();
+  outcome = 'pending';
+  const previousRequests = requests.length;
+  await page.locator('.private-message__form').evaluate(form => { form.requestSubmit(); form.requestSubmit(); });
+  await page.waitForFunction(() => document.querySelector('.private-message__form').getAttribute('aria-busy') === 'true');
+  assert(await submit.isDisabled(), 'Sending must disable duplicate submission.');
+  await new Promise(resolve => setTimeout(resolve, 100));
+  assert.equal(requests.length, previousRequests + 1);
+  assert(finishRequest, 'Mock request did not start.');
+  finishRequest();
+  await page.waitForFunction(() => document.getElementById('message-feedback').textContent.includes('留言已提交'));
+  assert.equal(await message.inputValue(), '');
+  assert.equal(await email.inputValue(), '');
+  assert(await submit.isDisabled(), 'A successful send needs a new verification.');
+  await page.evaluate(() => { location.hash = '#work-site'; });
+  await page.waitForFunction(() => !document.querySelector('.private-message__form'));
+  await page.evaluate(() => { location.hash = '#contact'; });
+  await page.waitForFunction(() => window.captcha && document.querySelector('.private-message__form'));
+  assert(await submit.isDisabled(), 'A remounted form needs fresh verification.');
+  assert.equal(await page.locator('#message-turnstile').count(), 1, 'Navigation must reuse the CAPTCHA script.');
+  await verify();
+  assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0, 'Private messages must not be saved in browser storage.');
+  assert.deepEqual(errors, []);
+
+  captchaFails = true;
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector('.private-message__verification').textContent.includes('验证暂时不可用'));
+  await message.fill('验证失败也保留正文。');
+  const beforeFailure = requests.length;
+  await page.locator('.private-message__form').evaluate(form => form.requestSubmit());
+  assert.equal(requests.length, beforeFailure, 'Blocked CAPTCHA must not bypass verification.');
+  assert.equal(await message.inputValue(), '验证失败也保留正文。');
+  captchaFails = false;
+  assert.deepEqual(errors, []);
+
+  await mkdir('.site-build/qa', { recursive: true });
+  for (const [label, width, height] of [['desktop', 1440, 1100], ['mobile', 390, 844], ['narrow', 320, 740]]) {
+    await page.setViewportSize({ width, height });
+    await page.goto(`${configured}#contact`);
+    await page.reload();
+    await page.locator('.private-message').scrollIntoViewIfNeeded();
+    assert(await page.locator('#main-content').evaluate(main => main.scrollWidth <= main.clientWidth + 1));
+    await page.locator('.private-message__submit').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `.site-build/qa/private-message-${label}.png` });
+  }
+  console.log('Passed: unconfigured form; missing, expired and unavailable CAPTCHA; token inclusion/reset; empty/invalid input; optional reply email; rate/network failures preserving text; duplicate protection; success reset; responsive layout. CAPTCHA and submissions were mocked locally; no email was sent.');
+} finally {
+  await browser.close();
+}

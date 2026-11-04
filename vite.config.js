@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   root: fileURLToPath(new URL('./app', import.meta.url)),
+  envDir: fileURLToPath(new URL('./', import.meta.url)),
   base: '/',
   publicDir: fileURLToPath(new URL('./public', import.meta.url)),
   plugins: [react()],
@@ -16,7 +17,9 @@ export default defineConfig({
       output: {
         entryFileNames: 'assets/site.js',
         chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/site[extname]'
+        assetFileNames: ({ names }) => names.some(name => name === 'avatar.jpg' || name.endsWith('.css'))
+          ? 'assets/site[extname]'
+          : 'assets/[name]-[hash][extname]'
       }
     }
   }

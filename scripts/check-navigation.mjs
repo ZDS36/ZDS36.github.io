@@ -21,6 +21,10 @@ try {
   await context.route('**/*', (route) => {
     const url = new URL(route.request().url());
     if (url.origin === base.origin) return route.continue();
+    // Navigation checks keep CAPTCHA offline; its submission behavior has separate tests.
+    if (url.href === 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit') {
+      return route.fulfill({ contentType: 'text/javascript', body: 'window.turnstile = { ready: fn => fn(), render: () => "navigation-widget", remove() {}, reset() {}, getResponse: () => "" };' });
+    }
     externalRequests.push(url.origin);
     return route.abort();
   });
@@ -112,6 +116,15 @@ try {
   assert(await page.evaluate(() => window.testFilm.paused && !window.testFilm.isConnected), 'Leaving the film must stop playback.');
   console.log('Passed: film entry, no automatic video download/playback, actual decoding, seek and return cleanup.');
   await page.evaluate(() => { window.originalMain = document.getElementById('main-content'); });
+  // A pending scroll frame must yield to a chapter selected in that same frame.
+  await page.evaluate(() => {
+    const main = document.getElementById('main-content');
+    main.scrollTop = main.querySelector('[data-view="works"]').offsetTop;
+    requestAnimationFrame(() => { location.hash = 'about'; });
+    main.dispatchEvent(new Event('scroll'));
+  });
+  await settled('about');
+  await navigate('top');
   for (let pass = 0; pass < 3; pass++) {
     for (const route of routes) await navigate(route);
   }
@@ -362,6 +375,46 @@ try {
   await page.screenshot({ path: path.join(screenshotDirectory, 'glass-nav-desktop.png') });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: path.join(screenshotDirectory, 'glass-nav-mobile.png') });
+  await navigate('slices');
+  assert.equal(await page.locator('.primary-nav a[href="#slices"]').innerText(), '年轮');
+  assert.equal(await page.locator('[data-view="slices"] h1').innerText(), '年轮');
+  assert((await page.locator('.moment-card').count()) > 0, 'Time tree needs real entries.');
+  const dates = await page.locator('.moment__date').evaluateAll(nodes => nodes.map(node => node.dateTime));
+  assert.deepEqual(dates, [...dates].sort().reverse(), 'Backdated moments must sort by their actual dates.');
+  await page.locator('.timeline-index button').first().click();
+  assert.equal(await page.evaluate(() => location.hash), '#slices', 'Month navigation must keep the chapter address.');
+  assert(await page.locator('.time-tree__month').first().evaluate(node => {
+    const main = document.getElementById('main-content').getBoundingClientRect();
+    const target = node.getBoundingClientRect();
+    return target.top >= main.top && target.top < main.bottom;
+  }), 'Month button must bring the target month into view.');
+  const thumbnail = page.locator('.moment-photos button').first();
+  await thumbnail.scrollIntoViewIfNeeded();
+  const beforePhoto = await page.locator('#main-content').evaluate(main => main.scrollTop);
+  await thumbnail.click();
+  await page.waitForSelector('.photo-viewer[open]');
+  assert(await page.locator('.photo-viewer img').evaluate(image => image.complete && image.naturalWidth > 0), 'Full photo failed to load.');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.photo-viewer').open);
+  assert(await thumbnail.evaluate(node => document.activeElement === node), 'Closing photo must return focus to its thumbnail.');
+  assert(Math.abs(await page.locator('#main-content').evaluate(main => main.scrollTop) - beforePhoto) < 2, 'Photo viewing changed the reading position.');
+  await thumbnail.click();
+  await page.locator('.photo-viewer button').click();
+  assert.equal(await page.locator('.photo-viewer').evaluate(node => node.open), false);
+  await thumbnail.click();
+  await navigate('about');
+  assert.equal(await page.locator('.photo-viewer').evaluate(node => node.open), false, 'Photo must close when changing chapters.');
+  for (const [label, width, height] of [['desktop', 1440, 1000], ['mobile', 390, 900]]) {
+    await page.setViewportSize({ width, height });
+    await navigate('slices');
+    await page.screenshot({ path: path.join(screenshotDirectory, `rings-${label}.png`) });
+    await page.locator('.time-tree').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(screenshotDirectory, `rings-tree-${label}.png`) });
+    assert(await page.locator('#main-content').evaluate(main => main.scrollWidth <= main.clientWidth + 1));
+  }
+  assert.deepEqual(errors, [], 'Time tree or photo viewer reported errors.');
+  assert.deepEqual(externalRequests, [], 'Time tree must use local assets.');
+  console.log('Passed: time-tree dates, year/month index, photo loading, Escape, close button, focus/scroll restoration and navigation cleanup.');
   assert.deepEqual(errors, [], 'Glass navigation reported errors.');
   console.log('Passed: glass indicator interpolation, rapid reversal, persistent DOM, 4 responsive widths, keyboard links and reduced motion.');
   console.log('Passed: continuous wheel scrolling, parallax, active navigation, stable DOM/focus/history, mask interruption and reduced motion.');

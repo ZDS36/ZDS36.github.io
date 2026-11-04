@@ -2,6 +2,11 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import avatarUrl from './avatar.jpg';
+import { MOMENTS } from './moments.js';
+import { groupMoments } from './timeline.js';
+import PrivateMessage from './PrivateMessage.jsx';
+
+const TIMELINE = groupMoments(MOMENTS);
 
 const FILM_URL = '/media/sunk-cost/film.mp4?v=20261026-polished';
 const FILM_HTML_URL = '/media/sunk-cost/animation.html?v=20261026-polished';
@@ -13,7 +18,7 @@ const CHAPTERS = ['top', 'works', 'slices', 'about', 'contact'];
 const NAV_ITEMS = [
   { id: 'top', label: '首页' },
   { id: 'works', label: '作品' },
-  { id: 'slices', label: '切片' },
+  { id: 'slices', label: '年轮' },
   { id: 'about', label: '关于' }
 ];
 
@@ -66,7 +71,7 @@ const PAGE_TITLES = {
   'work-site': '未定态个人网站｜张刀宋',
   'work-dashboard': '课程面板｜张刀宋',
   about: '关于我｜张刀宋',
-  slices: '我的切片｜张刀宋',
+  slices: '年轮｜张刀宋',
   contact: '联系方式｜张刀宋'
 };
 
@@ -130,8 +135,9 @@ function SiteHeader({ page }) {
   return (
     <header className="site-header">
       <a className="brand" href="#top" aria-label="返回首页">
-        <span className="brand__name">张刀宋</span>
-        <span className="brand__meta">BETWEEN STATES / 00</span>
+        <svg className="brand__symbol" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2v28M2 16h28M6.1 6.1l19.8 19.8M6.1 25.9L25.9 6.1" stroke="currentColor" strokeWidth="2" /></svg>
+        <span className="brand__name">张刀宋<span className="brand__dot">.</span></span>
+        <span className="brand__meta">未定态<br />BETWEEN STATES</span>
       </a>
 
       <nav className="primary-nav" aria-label="主导航">
@@ -176,9 +182,11 @@ function WorkVisual({ work, className = '' }) {
     <div className={`work-visual work-visual--${work.tone} ${className}`.trim()} data-work-visual={work.id} aria-hidden="true">
       <span className="work-visual__caption">{work.meta}</span>
       <span className="work-visual__number">{work.number}</span>
+      <span className="work-visual__orbit" />
       <span className="work-visual__shape">
         {work.id === 'work-film' && <img src={FILM_POSTER} alt="" width="1600" height="900" />}
       </span>
+      <span className="work-visual__note">{work.tone === 'blue' ? 'IDEAS IN BLOOM' : 'LESS, BUT BETTER'}</span>
       <strong className="work-visual__title">{work.title}</strong>
     </div>
   );
@@ -188,21 +196,23 @@ function Hero({ sharedEntering }) {
   return (
     <section className={`view home${sharedEntering ? ' view--shared-enter' : ''}`} data-view="top" aria-labelledby="hero-title">
       <div className="home__intro">
-        <p className="page-kicker"><span>00</span> / PERSONAL ARCHIVE</p>
+        <p className="page-kicker"><span>00 —</span> PERSONAL SPACE · 持续生长中</p>
+
+        <h1 className="home__title" id="hero-title" tabIndex="-1" aria-label="未定态 Between States">Between<br /><em>States.</em><svg className="home__title-dot" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2v28M2 16h28M6.1 6.1l19.8 19.8M6.1 25.9L25.9 6.1" stroke="currentColor" strokeWidth="1.5" /></svg></h1>
 
         <div className="home__identity">
           <div className="home__portrait">
             <img className="portrait__image" src={avatarUrl} alt="张刀宋的头像" />
           </div>
           <div>
-            <p className="home__state"><i aria-hidden="true" /> STATUS / OPEN</p>
-            <h1 id="hero-title" tabIndex="-1">张刀宋</h1>
+            <p className="home__name">张刀宋 <span>/ 未定态</span></p>
+            <p className="home__state"><i aria-hidden="true" /> EXPLORING & CREATING</p>
           </div>
         </div>
 
         <div className="home__statement">
-          <p>把正在做的东西，<br /><em>认真地留下来。</em></p>
-          <span>这里收集网页、工具与影像，也记录把想法变成作品的过程。</span>
+          <p>把正在做的东西，<em>认真地留下来。</em></p>
+          <span>网页、工具，和生活里的小小切片。<br />在想法与成品之间，留一点探索的余地。</span>
         </div>
 
         <div className="home__actions">
@@ -225,7 +235,9 @@ function Hero({ sharedEntering }) {
       </a>
 
       <div className="home__foot">
-        <p><span>LATEST</span> 新的表达，留在影像里。</p>
+        <p><span className="home__foot-status" /> 一个仍在生长的个人空间</p>
+        <a href="#works">向下探索 <span aria-hidden="true">↓</span></a>
+        <p className="home__edition">PERSONAL ARCHIVE / 2026</p>
       </div>
     </section>
   );
@@ -426,26 +438,83 @@ function FilmDetail({ backPage, sharedEntering }) {
 }
 
 function SlicesView() {
-  const slices = [
-    ['09.29', '想弹会的一首歌', '最近在练吉他，想学会弹唱 h3R3 刘清云的《还是会想你》。现在还在慢慢练。'],
-    ['09.29', '还在冲钻石', '最近在冲无畏契约的钻石段位，不过打得挺菜，打着打着就有点迷茫。'],
-    ['09.29', '先做着玩', '还没想清楚为什么要做这个个人网站，就是想做着玩一下。先把喜欢的东西和折腾的过程放在这里。']
-  ];
+  const [photo, setPhoto] = useState(null);
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!photo) return;
+    const dialog = dialogRef.current;
+    if (!dialog.open) dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, [photo]);
 
   return (
-    <section className="view page slices-page" data-view="slices" aria-label="我的切片">
-      <PageHeader index="02" label="FRAGMENTS" title="切片" intro="一些正在发生的事，以及我愿意留下来的判断。" />
-      <ol className="journal-list">
-        {slices.map(([date, title, copy], index) => (
-          <li key={title}>
-            <span>0{index + 1}</span>
-            <time>{date}</time>
-            <h2>{title}</h2>
-            <p>{copy}</p>
-          </li>
-        ))}
-      </ol>
-      <footer className="page-foot"><span>UPDATED / 2026</span><span>BETWEEN STATES</span></footer>
+    <section className="view page slices-page" data-view="slices" aria-label="年轮">
+      <PageHeader index="02" label="LIFE, IN RINGS" title="年轮" intro="不必每天发生大事。小小的日常，也值得长成一圈年轮。" />
+      <div className="moments-layout">
+        <aside className="moments-profile" aria-label="年轮介绍">
+          <div className="moments-profile__cover" aria-hidden="true"><span>Little things,<br /><em>lasting traces.</em></span></div>
+          <img className="moments-profile__avatar" src={avatarUrl} alt="" width="64" height="64" />
+          <h2>张刀宋的时间树<span aria-hidden="true">↗</span></h2>
+          <p>把喜欢的、正在尝试的，<br />还有偶尔冒出来的念头，留在这里。</p>
+          <div className="moments-profile__meta"><span><i aria-hidden="true" /> 慢慢生长</span><span>{MOMENTS.length} 条片段</span></div>
+          <p className="moments-profile__label">循着时间，走一走</p>
+          <nav className="timeline-index" aria-label="年轮时间索引">
+            {TIMELINE.map(({ year, months }) => (
+              <div key={year}>
+                <strong>{year}</strong>
+                {months.map(({ month, entries }) => (
+                  <button key={month} type="button" onClick={() => {
+                    document.getElementById(`ring-${year}-${month}`).scrollIntoView({ block: 'start' });
+                  }}>{Number(month)} 月<span>{entries.length} 条</span></button>
+                ))}
+              </div>
+            ))}
+          </nav>
+        </aside>
+        <div className="time-tree">
+          <div className="time-tree__intro"><span>沿途的生活</span><span>由近及远 ↓</span></div>
+          {TIMELINE.map(({ year, months }) => (
+            <section className="time-tree__year" key={year} aria-labelledby={`ring-year-${year}`}>
+              <h2 id={`ring-year-${year}`}><span>{year}</span><small>这一年，慢慢成形</small></h2>
+              {months.map(({ month, entries }) => (
+                <section className="time-tree__month" id={`ring-${year}-${month}`} key={month} aria-label={`${year} 年 ${Number(month)} 月`} tabIndex="-1">
+                  <h3><span>{Number(month).toString().padStart(2, '0')}</span> 月<small>{entries.length} 个片段</small></h3>
+                  <ol className="moments-feed">
+                    {entries.map(moment => (
+                      <li className="moment" key={moment.id}>
+                        <time className="moment__date" dateTime={moment.date}><strong>{moment.date.slice(8)}</strong><span>{Number(month)} 月</span></time>
+                        <article className="moment-card" aria-labelledby={`moment-${moment.id}`}>
+                          <header><img src={avatarUrl} width="36" height="36" alt="" /><div><span>张刀宋</span><time dateTime={moment.date}>{moment.date.replaceAll('-', '.')}</time></div><span className="moment-card__tag">{moment.tag}</span></header>
+                          <h4 id={`moment-${moment.id}`}>{moment.title}</h4>
+                          <p className="moment-card__text">{moment.text}</p>
+                          {moment.photos.length > 0 && <div className={`moment-photos${moment.photos.length === 1 ? ' moment-photos--single' : ''}`}>
+                            {moment.photos.map((image, index) => (
+                              <button key={image.src} type="button" onClick={() => setPhoto(image)} aria-label={`放大图片：${image.alt}`}>
+                                <img src={image.src} alt={image.alt} loading="lazy" width="512" height="512" />
+                                <span aria-hidden="true">{index + 1} / {moment.photos.length} ↗</span>
+                              </button>
+                            ))}
+                          </div>}
+                          <footer><span>生活的一小片</span><span aria-hidden="true">—</span></footer>
+                        </article>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              ))}
+            </section>
+          ))}
+          <p className="time-tree__end"><span aria-hidden="true" /> 故事从这里发芽，也还会继续。</p>
+        </div>
+      </div>
+      <footer className="page-foot"><span>LITTLE THINGS / LASTING TRACES</span><span>BETWEEN STATES</span></footer>
+      <dialog className="photo-viewer" ref={dialogRef} aria-label="查看年轮配图" onClose={() => setPhoto(null)}>
+        <form method="dialog"><button type="submit" autoFocus>关闭 <span aria-hidden="true">×</span></button></form>
+        {photo && <figure><img src={photo.src} alt={photo.alt} /><figcaption>{photo.alt}</figcaption></figure>}
+      </dialog>
     </section>
   );
 }
@@ -481,13 +550,14 @@ function AboutView() {
 function ContactView() {
   return (
     <section className="view page contact-page" data-view="contact" aria-label="联系方式">
-      <PageHeader index="04" label="CONTACT" title="联系" intro="目前只展示已经确认公开的渠道。" />
+      <PageHeader index="04" label="CONTACT" title="打个招呼。" intro="关于作品，关于想法，或只是说声你好。" />
+      <PrivateMessage />
       <div className="contact-panel">
         <a href="https://github.com/ZDS36" target="_blank" rel="noreferrer">
           <span>GITHUB</span><strong>ZDS36</strong><i aria-hidden="true">↗</i>
         </a>
       </div>
-      <p className="contact-note">邮箱暂未公开；新的公开联系方式确认后会更新。</p>
+      <p className="contact-note">也可以在 GitHub 上，看看我正在折腾的东西。</p>
       <footer className="page-foot"><span>CONTACT / 04</span><span>张刀宋</span></footer>
     </section>
   );
@@ -538,6 +608,7 @@ function App() {
       active.overlay.remove();
     };
     const syncPage = () => {
+      main.querySelector('dialog[open]')?.close();
       const nextPage = pageFromHash();
       if (window.location.hash !== `#${nextPage}`) history.replaceState(null, '', `#${nextPage}`);
       const oldPage = pageRef.current;
@@ -688,7 +759,8 @@ function App() {
           section.style.setProperty('--drift', motion.matches ? '0px' : `${drift}px`);
         }
       }
-      if (!isDetail && current && current.dataset.view !== pageRef.current) {
+      // Let pending hash navigation settle before scroll tracking can replace its destination.
+      if (!isDetail && current && location.hash === `#${pageRef.current}` && current.dataset.view !== pageRef.current) {
         pageRef.current = current.dataset.view;
         setPage(current.dataset.view);
         // Update the address without adding history entries or moving keyboard focus.

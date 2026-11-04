@@ -2,6 +2,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import './check-timeline.mjs';
 import './check-film-media.mjs';
 
 const repositoryRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -30,7 +31,7 @@ function requireMarker(text, marker, label) {
   }
 }
 
-for (const requiredCopy of ['张刀宋', '作品', '切片', '关于', '联系我', '未定态', '课程面板', '沉没成本', '张刀宋净化', '一键配置', '开机自启']) {
+for (const requiredCopy of ['张刀宋', '作品', '年轮', '关于', '联系我', '未定态', '课程面板', '沉没成本', '张刀宋净化', '一键配置', '开机自启']) {
   requireMarker(sourceHtml + sourceJsx, requiredCopy, 'Site copy');
 }
 
@@ -58,7 +59,8 @@ const assetDirectory = path.join(buildRoot, 'assets');
 const assetNames = (await readdir(assetDirectory)).sort();
 const expectedAssetNames = ['site.css', 'site.jpg', 'site.js'];
 
-if (JSON.stringify(assetNames) !== JSON.stringify(expectedAssetNames)) {
+if (expectedAssetNames.some(name => !assetNames.includes(name))
+  || assetNames.some(name => !expectedAssetNames.includes(name) && !/^[\w-]+\.(?:jpe?g|png|webp|avif|gif)$/i.test(name))) {
   throw new Error(`Unexpected production assets: ${assetNames.join(', ')}`);
 }
 

@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, stat } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,6 +13,12 @@ const files = [
   ...['film.mp4', 'poster.jpg', 'past.jpg', 'weight.jpg', 'release.jpg', 'animation.html', 'animation-web.css', 'animation-web.js', 'Smiley-Sans-LICENSE.txt', 'LXGW-WenKai-LICENSE.txt'].map(name => [path.join('media', 'sunk-cost', name), path.join('media', 'sunk-cost', name)]),
   ...['ZhangDaoSongJinghua-0.2.3.apk', 'quick-start.txt'].map(name => [path.join('downloads', 'zhangdaosong', name), path.join('downloads', 'zhangdaosong', name)])
 ];
+
+for (const name of await readdir(path.join(buildRoot, 'assets'))) {
+  if (/^[\w-]+\.(?:jpe?g|png|webp|avif|gif)$/i.test(name) && name !== 'site.jpg') {
+    files.push([path.join('assets', name), path.join('assets', name)]);
+  }
+}
 
 function assertInside(base, candidate, label) {
   const relative = path.relative(base, candidate);
