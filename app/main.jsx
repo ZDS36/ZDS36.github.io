@@ -529,17 +529,23 @@ function AboutView() {
           <figcaption>AN OPEN ARCHIVE / 03</figcaption>
         </figure>
         <div className="about-layout__story">
-          <p className="about-layout__lead">这里是张刀宋的<br />个人数字空间。</p>
+          <p className="about-layout__lead">我是张刀宋，<br />欢迎来到未定态。</p>
           <div className="about-layout__copy">
+            <p>最初做这个网站，只是想做着玩。慢慢地，这里有了网页和实用工具，也有了短片、照片与生活记录。想做的东西，就试着做出来；想留住的瞬间，就放进这里。</p>
+            <p>现在的作品里，有动态短片《沉没成本》、安卓工具「张刀宋净化」、课程面板，还有这个不断变化的网站。「作品」放做出来的东西，「年轮」记下沿途的日常。</p>
             <p>最近在练吉他，因为喜欢 h3R3 刘清云。最想学会弹唱的是《还是会想你》，现在还在慢慢练。</p>
-            <p>也在冲无畏契约的钻石段位，不过打得挺菜，打着打着就有点迷茫。</p>
-            <p>至于为什么做这个网站，其实还没想清楚。一开始就是想做着玩，那就先把喜欢的东西、折腾的过程，慢慢放在这里。</p>
+            <p>之前想在无畏契约打上钻石，这个小目标已经完成了，现在是超凡一。</p>
           </div>
           <dl className="about-facts">
             <div><dt>正在练</dt><dd>吉他 ·《还是会想你》</dd></div>
-            <div><dt>小目标</dt><dd>无畏契约打上钻石</dd></div>
-            <div><dt>这个网站</dt><dd>先做着玩，慢慢想</dd></div>
+            <div><dt>小目标</dt><dd>钻石已达成 · 现在超凡一</dd></div>
+            <div><dt>在折腾</dt><dd>网页 · 实用工具 · 动态短片</dd></div>
+            <div><dt>留在这里</dt><dd>作品、照片，还有生活的小片段</dd></div>
           </dl>
+          <div className="home__actions">
+            <ArrowLink href="#works">看看作品</ArrowLink>
+            <a className="text-link" href="#slices">逛逛年轮 <span aria-hidden="true">→</span></a>
+          </div>
         </div>
       </div>
       <footer className="page-foot"><span>PERSONAL ARCHIVE</span><span>OPEN / EVOLVING</span></footer>

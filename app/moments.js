@@ -1,8 +1,17 @@
 import flowerUrl from './avatar.jpg';
 import ascendantUrl from './photos/valorant-ascendant-2026-10-30.jpg';
+import afterRainSkyUrl from './photos/after-rain-sky-2026-11-04.jpg';
 
 // 按实际发生日期填写；年轮会自动排序，补写过去的内容不用手动调整位置。
 export const MOMENTS = [
+  {
+    id: 'after-rain-sky-2026-11-04',
+    date: '2026-11-04',
+    title: '雨后的天空',
+    text: '今天雨后的天空，感觉挺不错，留在这里。',
+    tag: '日常',
+    photos: [{ src: afterRainSkyUrl, alt: '2026年11月4日，雨后的蓝天与白云，路边的树和行人' }]
+  },
   {
     id: 'valorant-ascendant-2026-10-30',
     date: '2026-10-30',
