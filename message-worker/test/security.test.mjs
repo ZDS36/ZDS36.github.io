@@ -70,6 +70,10 @@ test('trust boundaries, token binding, durable acceptance without waiting for SM
   };
   t.after(() => { globalThis.fetch = originalFetch; });
   const f = fixture();
+  const health = await handleMessage(new Request('https://example.workers.dev/health'), f.env);
+  assert.equal(health.status, 200);
+  assert((await health.text()).includes('连接正常'));
+  assert.equal(upstream.length, 0, 'Health checks must not validate a token or send a message.');
   assert.equal((await handleMessage(f.request({ Origin: 'https://untrusted.example' }), f.env)).status, 403);
   assert.equal((await handleMessage(f.request({ 'CF-Connecting-IP': '' }), f.env)).status, 400);
   assert.equal((await handleMessage(f.request({ 'Content-Length': '20000' }), f.env)).status, 413);

@@ -11,6 +11,11 @@ function reply(origin, status, code, retryAfter) {
 }
 
 export async function handleMessage(request, env) {
+  if (request.method === 'GET' && new URL(request.url).pathname === '/health') {
+    return new Response('留言服务连接正常。此检测不会发送留言。', {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }
+    });
+  }
   const origin = env.ALLOWED_ORIGIN;
   if (request.headers.get('Origin') !== origin) return reply(null, 403, 'origin');
   if (new URL(request.url).pathname !== '/message') return reply(origin, 404, 'not_found');

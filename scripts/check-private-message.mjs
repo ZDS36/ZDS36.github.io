@@ -16,6 +16,7 @@ try {
   let finishRequest;
   let captchaFails = false;
   let rateCode = '';
+  let errorStatus = 429;
   await page.route('https://challenges.cloudflare.com/**', route => captchaFails ? route.abort() : route.fulfill({
     contentType: 'text/javascript', body: `
       window.captchaScriptAsync = document.currentScript.async || document.currentScript.defer;
@@ -49,7 +50,7 @@ try {
     assert.equal(new URL(route.request().url()).pathname, '/message');
     if (outcome === 'network') return route.abort();
     if (outcome === 'pending') await new Promise(resolve => { finishRequest = resolve; });
-    await route.fulfill({ status: outcome === 'error' ? 429 : 202, contentType: 'application/json', body: outcome === 'error' ? JSON.stringify({ code: rateCode }) : '{"ok":true}' });
+    await route.fulfill({ status: outcome === 'error' ? errorStatus : 202, contentType: 'application/json', body: outcome === 'error' ? JSON.stringify({ code: rateCode }) : '{"ok":true}' });
   };
   await page.route('https://formspree.io/**', () => { assert.fail('Retired Formspree endpoint must not be used.'); });
   await page.route('https://qa-messages.qa.workers.dev/**', interceptSubmission);
@@ -96,6 +97,7 @@ try {
   await page.waitForFunction(() => !document.querySelector('.private-message__form').getAttribute('aria-busy') || document.querySelector('.private-message__form').getAttribute('aria-busy') === 'false');
   assert.equal(await message.inputValue(), '这是一条仅用于本地验证的留言。');
   assert((await feedback.textContent()).includes('内容已保留'));
+  assert((await feedback.textContent()).includes('浏览器未能取得留言服务响应'));
   assert.equal(await page.evaluate(() => window.captcha.resets), 2);
 
   await email.fill('visitor@example.com');
@@ -112,6 +114,14 @@ try {
     assert.equal(await message.inputValue(), '这是一条仅用于本地验证的留言。');
   }
   rateCode = '';
+  for (const [status, code, copy] of [[400, 'verification', '服务器未接受'], [400, 'invalid_input', '填写内容'], [503, 'unavailable', '暂时无法接收'], [500, '__proto__', '暂时无法接收']]) {
+    errorStatus = status; rateCode = code; outcome = 'error';
+    await verify(); await submit.click();
+    await page.waitForFunction(() => document.querySelector('.private-message__form').getAttribute('aria-busy') === 'false');
+    assert((await feedback.textContent()).includes(copy), 'Submission errors must identify the failed step instead of one generic message.');
+    assert.equal(await message.inputValue(), '这是一条仅用于本地验证的留言。');
+  }
+  errorStatus = 429; rateCode = '';
   await verify();
   outcome = 'pending';
   const previousRequests = requests.length;
@@ -121,8 +131,18 @@ try {
   await new Promise(resolve => setTimeout(resolve, 100));
   assert.equal(requests.length, previousRequests + 1);
   assert(finishRequest, 'Mock request did not start.');
+  await page.evaluate(() => {
+    window.savedMessageFormReset = HTMLFormElement.prototype.reset;
+    HTMLFormElement.prototype.reset = () => { throw new Error('Simulated browser reset hook failure'); };
+  });
   finishRequest();
   await page.waitForFunction(() => document.getElementById('message-feedback').textContent.includes('发送成功'));
+  assert.equal(await message.inputValue(), '这是一条仅用于本地验证的留言。', 'A reset failure must keep the accepted state and preserve text.');
+  await page.evaluate(() => {
+    HTMLFormElement.prototype.reset = window.savedMessageFormReset;
+    delete window.savedMessageFormReset;
+    document.querySelector('.private-message__form').reset();
+  });
   assert.equal(await message.inputValue(), '');
   assert.equal(await email.inputValue(), '');
   assert((await submit.textContent()).includes('发送成功'), 'Success must be visible on the button the visitor clicked.');

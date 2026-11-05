@@ -86,26 +86,35 @@ export default function PrivateMessage() {
         method: 'POST', body: data, headers: { Accept: 'application/json' },
         credentials: 'omit', signal: AbortSignal.timeout(60000)
       });
-      if (response.status === 429) {
+      if (!response.ok) {
         setStatus('error');
         const details = await response.json().catch(() => ({}));
         const messages = {
           daily_limit: '这个网络今天已达到 3 次投递上限，请明天再来。内容已保留。',
           cooldown: '两次投递请至少间隔 60 秒。内容已保留。',
-          site_limit: '今日留言通道已达到保护上限，请明天再来。内容已保留。'
+          site_limit: '今日留言通道已达到保护上限，请明天再来。内容已保留。',
+          verification: '服务器未接受本次人机验证，请重新验证后再寄出。内容已保留。',
+          invalid_input: '请检查留言的填写内容后再试。内容已保留。',
+          origin: '请从本站正式网址打开后提交。内容已保留。',
+          unavailable: '留言服务暂时无法接收，请稍后再试。内容已保留。'
         };
-        setFeedback(messages[details.code] || '当前留言通道提交过于频繁，请稍后再试。内容已保留。');
+        const copy = Object.hasOwn(messages, details.code) ? messages[details.code] : null;
+        setFeedback(copy || (response.status === 429
+          ? '当前留言通道提交过于频繁，请稍后再试。内容已保留。'
+          : '留言服务暂时无法接收，请稍后再试。内容已保留。'));
         return;
       }
-      if (!response.ok) throw new Error('Message was not accepted.');
-      form.reset();
+      // Browser form-reset hooks must not turn an accepted message into a reported failure.
+      try { HTMLFormElement.prototype.reset.call(form); } catch { /* Keep the accepted result. */ }
       setStatus('success');
       setFeedback('发送成功');
     } catch (error) {
       setStatus('error');
       setFeedback(error?.name === 'TimeoutError'
         ? '等待投递确认已超时，留言可能已送达。内容已保留，请先查收邮箱，避免重复寄出。'
-        : '暂时没能确认提交结果，内容已保留，请稍后再试。');
+        : error?.name === 'TypeError'
+          ? '浏览器未能取得留言服务响应。内容已保留，请先查收邮箱，再切换网络或浏览器重试。'
+          : '暂时没能确认提交结果，内容已保留，请稍后再试。');
     } finally {
       sending.current = false;
       if (widget.current !== null) {
