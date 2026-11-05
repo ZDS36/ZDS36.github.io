@@ -330,7 +330,8 @@ h1:focus, .site-main:focus { outline: none; }
 .private-message__verification p { color: var(--muted); font-size: .75rem; line-height: 1.8; }
 .private-message__unavailable { margin: 1.3rem 0 0; color: var(--muted); font-size: .8rem; line-height: 1.9; }
 .private-message__unavailable a { color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
-.private-message__feedback { min-height: 1.5rem; margin: 1rem 0 0; color: var(--muted); font-size: .8rem; line-height: 1.8; }
+.private-message__feedback { min-height: 1.5rem; margin: 1rem 0; color: var(--muted); font-size: .8rem; line-height: 1.8; }
+.private-message__feedback:not(:empty) { padding: .8rem 1rem; border: 1px solid currentColor; border-radius: .3rem; background: #11150e; }
 .private-message__feedback--success { color: var(--accent); }
 .private-message__feedback--error { color: #efb49b; }
 @media (max-width: 800px) {

@@ -11,7 +11,12 @@ export default function PrivateMessage() {
   const sending = useRef(false);
   const challenge = useRef(null);
   const widget = useRef(null);
+  const feedbackElement = useRef(null);
   const [verification, setVerification] = useState('loading');
+
+  useEffect(() => {
+    if (status === 'success') feedbackElement.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  }, [status]);
 
   useEffect(() => {
     if (!configured) return;
@@ -118,7 +123,9 @@ export default function PrivateMessage() {
         <p>一点近况，一个想法，<br />或者只是路过时的一声问候。</p>
         <span className="private-message__seal"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2" /><path d="m4 7 8 6 8-6" /></svg> 私密投递 · 不公开展示</span>
       </div>
-      <form className="private-message__form" onSubmit={submit} aria-label="私密留言" aria-busy={status === 'sending'}>
+      <form className="private-message__form" onSubmit={submit} onChange={() => {
+        if (status === 'success') { setStatus('idle'); setFeedback(''); }
+      }} aria-label="私密留言" aria-busy={status === 'sending'}>
         <fieldset disabled={!configured || status === 'sending'}>
           <legend className="private-message__legend">给张刀宋的留言</legend>
           <div className="private-message__fields">
@@ -131,10 +138,12 @@ export default function PrivateMessage() {
             <div ref={challenge} />
             <p role="status">{verification === 'ready' ? '验证已通过，可以寄出。' : verification === 'error' ? '验证暂时不可用，请先复制留言，再刷新页面重试。' : verification === 'expired' ? '验证已过期，请在验证框重新验证。' : '请完成上方验证；若没有出现验证框，请先复制留言，再刷新页面重试。'}</p>
           </div>}
-          <button className="private-message__submit" type="submit" disabled={verification !== 'ready'}><span>{status === 'sending' ? '正在寄出…' : '寄出留言'}</span><span aria-hidden="true">↗</span></button>
+          <div ref={feedbackElement}>
+            <p id="message-feedback" className={`private-message__feedback private-message__feedback--${status}`} role="status" aria-live="polite" aria-atomic="true">{feedback}</p>
+            <button className="private-message__submit" type="submit" disabled={verification !== 'ready'}><span>{status === 'sending' ? '正在寄出…' : status === 'success' ? '已寄出' : '寄出留言'}</span><span aria-hidden="true">{status === 'success' ? '✓' : '↗'}</span></button>
+          </div>
         </fieldset>
         {!configured && <p className="private-message__unavailable">留言暂未开放，你也可以先通过 <a href="https://github.com/ZDS36" target="_blank" rel="noreferrer">GitHub 找到我 ↗</a>。</p>}
-        <p id="message-feedback" className={`private-message__feedback private-message__feedback--${status}`} role="status" aria-live="polite" aria-atomic="true">{feedback}</p>
       </form>
     </div>
   );
