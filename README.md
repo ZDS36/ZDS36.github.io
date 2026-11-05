@@ -24,6 +24,8 @@
 
 部署与凭据保存见 [接收端说明](message-worker/README.md)。`.env.local` 只填写公开的 `VITE_MESSAGE_ENDPOINT`（Worker URL 加 `/message`）和 `VITE_TURNSTILE_SITE_KEY`。配置缺失或错误时禁止提交，不回退旧 Formspree；验证码未通过、过期或加载失败时也禁止发送，提交失败保留正文。
 
+网页最多等待 60 秒获取发信回执。30 秒的旧等待时间可能在邮件已经发出、服务器尚未完成返回时提前中断，造成“邮箱收到但网页提示未确认”。超时不能视为未送达，页面会保留正文并提醒先查收邮箱，避免重复投递；本地回归覆盖 31 秒后成功返回的情况。
+
 只使用 Workers Free 与现有 QQ 邮箱，不开通付费套餐。旧 Formspree 表单必须在其后台关闭 Form Enabled，否则历史公开地址仍可绕过新接口。真实收件仍需由正常访客完成人机验证后提交确认；前端模拟、本地 SMTP 认证成功都不能替代这一步。
 
 本地交互测试使用 4175 与 4177 两个开发服务器：前者设置 `VITE_MESSAGE_ENDPOINT=https://qa-messages.qa.workers.dev/message`、`VITE_TURNSTILE_SITE_KEY=local-mock-site-key`，后者将这两个变量显式置空。运行 `node scripts/check-private-message.mjs http://127.0.0.1:4175 http://127.0.0.1:4177`。验证码和请求全部在本地拦截，不发送邮件；测试值不能用于正式构建。

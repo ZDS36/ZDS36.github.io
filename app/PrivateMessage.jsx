@@ -79,7 +79,7 @@ export default function PrivateMessage() {
     try {
       const response = await fetch(endpoint, {
         method: 'POST', body: data, headers: { Accept: 'application/json' },
-        credentials: 'omit', signal: AbortSignal.timeout(30000)
+        credentials: 'omit', signal: AbortSignal.timeout(60000)
       });
       if (response.status === 429) {
         setStatus('error');
@@ -96,9 +96,11 @@ export default function PrivateMessage() {
       form.reset();
       setStatus('success');
       setFeedback('留言已提交。谢谢你留下这一小段话。');
-    } catch {
+    } catch (error) {
       setStatus('error');
-      setFeedback('暂时没能确认提交结果，内容已保留，请稍后再试。');
+      setFeedback(error?.name === 'TimeoutError'
+        ? '等待投递确认已超时，留言可能已送达。内容已保留，请先查收邮箱，避免重复寄出。'
+        : '暂时没能确认提交结果，内容已保留，请稍后再试。');
     } finally {
       sending.current = false;
       if (widget.current !== null) {

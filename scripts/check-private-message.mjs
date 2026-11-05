@@ -49,6 +49,10 @@ try {
     assert.equal(new URL(route.request().url()).pathname, '/message');
     if (outcome === 'network') return route.abort();
     if (outcome === 'pending') await new Promise(resolve => { finishRequest = resolve; });
+    if (outcome === 'slow') {
+      await new Promise(resolve => setTimeout(resolve, 31000));
+      if (route.request().failure()) return;
+    }
     await route.fulfill({ status: outcome === 'error' ? 429 : 200, contentType: 'application/json', body: outcome === 'error' ? JSON.stringify({ code: rateCode }) : '{"ok":true}' });
   };
   await page.route('https://formspree.io/**', () => { assert.fail('Retired Formspree endpoint must not be used.'); });
@@ -147,6 +151,29 @@ try {
   captchaFails = false;
   assert.deepEqual(errors, []);
 
+  outcome = 'slow';
+  await page.reload();
+  await verify();
+  await message.fill('慢回执也必须正确确认成功。');
+  await submit.click();
+  await page.waitForFunction(() => document.querySelector('.private-message__form').getAttribute('aria-busy') === 'false', null, { timeout: 35000 });
+  assert((await feedback.textContent()).includes('留言已提交'), 'A successful receipt after 31 seconds must not be reported as an unconfirmed send.');
+  assert.equal(await message.inputValue(), '');
+  outcome = 'success';
+
+  await verify();
+  await message.fill('等待回执超时也必须保留正文。');
+  await page.evaluate(() => {
+    window.originalMessageFetch = window.fetch;
+    window.fetch = () => Promise.reject(new DOMException('Test timeout', 'TimeoutError'));
+  });
+  await submit.click();
+  await page.waitForFunction(() => document.querySelector('.private-message__form').getAttribute('aria-busy') === 'false');
+  assert((await feedback.textContent()).includes('留言可能已送达'));
+  assert((await feedback.textContent()).includes('避免重复寄出'));
+  assert.equal(await message.inputValue(), '等待回执超时也必须保留正文。');
+  await page.evaluate(() => { window.fetch = window.originalMessageFetch; delete window.originalMessageFetch; });
+
   await mkdir('.site-build/qa', { recursive: true });
   for (const [label, width, height] of [['desktop', 1440, 1100], ['mobile', 390, 844], ['narrow', 320, 740]]) {
     await page.setViewportSize({ width, height });
@@ -157,7 +184,7 @@ try {
     await page.locator('.private-message__submit').scrollIntoViewIfNeeded();
     await page.screenshot({ path: `.site-build/qa/private-message-${label}.png` });
   }
-  console.log('Passed: unconfigured form; missing, expired and unavailable CAPTCHA; token inclusion/reset; empty/invalid input; optional reply email; rate/network failures preserving text; duplicate protection; success reset; responsive layout. CAPTCHA and submissions were mocked locally; no email was sent.');
+  console.log('Passed: unconfigured form; missing, expired and unavailable CAPTCHA; token inclusion/reset; empty/invalid input; optional reply email; rate/network failures preserving text; duplicate protection; success reset; 31-second successful receipt; honest timeout feedback; responsive layout. CAPTCHA and submissions were mocked locally; no email was sent.');
 } finally {
   await browser.close();
 }
