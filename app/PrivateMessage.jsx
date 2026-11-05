@@ -100,7 +100,7 @@ export default function PrivateMessage() {
       if (!response.ok) throw new Error('Message was not accepted.');
       form.reset();
       setStatus('success');
-      setFeedback('留言已提交。谢谢你留下这一小段话。');
+      setFeedback('发送成功');
     } catch (error) {
       setStatus('error');
       setFeedback(error?.name === 'TimeoutError'
@@ -133,14 +133,14 @@ export default function PrivateMessage() {
             <label htmlFor="message-email">你的邮箱 <span>选填，方便我回复</span><input id="message-email" name="email" type="email" autoComplete="email" maxLength="254" placeholder="you@example.com" /></label>
           </div>
           <label htmlFor="message-text">想说的话<textarea id="message-text" name="message" required maxLength="2000" rows="6" placeholder="在这里写下你想说的话…" aria-describedby="message-privacy message-feedback" /></label>
-          <p className="private-message__privacy" id="message-privacy">最多 2000 字。留言不会在网站公开。Cloudflare 接收并验证，由 QQ 邮箱转发。同一网络每天最多 3 次，两次间隔至少 60 秒，每天零点（北京时间）重置。</p>
+          <p className="private-message__privacy" id="message-privacy">最多 2000 字。留言不会在网站公开。Cloudflare 接收并暂存待投递留言，由 QQ 邮箱通知，投递后删除。同一网络每天最多 3 次，两次间隔至少 60 秒，每天零点（北京时间）重置。</p>
           {configured && <div className="private-message__verification">
             <div ref={challenge} />
             <p role="status">{verification === 'ready' ? '验证已通过，可以寄出。' : verification === 'error' ? '验证暂时不可用，请先复制留言，再刷新页面重试。' : verification === 'expired' ? '验证已过期，请在验证框重新验证。' : '请完成上方验证；若没有出现验证框，请先复制留言，再刷新页面重试。'}</p>
           </div>}
           <div ref={feedbackElement}>
             <p id="message-feedback" className={`private-message__feedback private-message__feedback--${status}`} role="status" aria-live="polite" aria-atomic="true">{feedback}</p>
-            <button className="private-message__submit" type="submit" disabled={verification !== 'ready'}><span>{status === 'sending' ? '正在寄出…' : status === 'success' ? '已寄出' : '寄出留言'}</span><span aria-hidden="true">{status === 'success' ? '✓' : '↗'}</span></button>
+            <button className="private-message__submit" type="submit" disabled={verification !== 'ready'}><span>{status === 'sending' ? '正在寄出…' : status === 'success' ? '发送成功' : '寄出留言'}</span><span aria-hidden="true">{status === 'success' ? '✓' : '↗'}</span></button>
           </div>
         </fieldset>
         {!configured && <p className="private-message__unavailable">留言暂未开放，你也可以先通过 <a href="https://github.com/ZDS36" target="_blank" rel="noreferrer">GitHub 找到我 ↗</a>。</p>}

@@ -27,12 +27,13 @@ test('mail uses hostname TLS, keeps the recipient fixed and closes after connect
         assert.equal(message.to, 'owner@example.com');
         assert.equal(message.from.address, message.to);
         assert.equal(message.replyTo, 'visitor@example.com');
+        assert.equal(message.messageId, '<stable-test-id@zds36.github.io>');
       },
       close() { closed++; }
     };
   });
   const env = { SMTP_USER: 'owner@example.com', SMTP_PASSWORD: 'test-only-secret' };
-  const message = { name: 'Visitor', email: 'visitor@example.com', message: 'Hello' };
+  const message = { id: 'stable-test-id', name: 'Visitor', email: 'visitor@example.com', message: 'Hello' };
   await sendMail(env, message);
   fail = true;
   await assert.rejects(sendMail(env, message), /connection failed/);

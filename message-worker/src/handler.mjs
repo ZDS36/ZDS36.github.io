@@ -7,10 +7,10 @@ function reply(origin, status, code, retryAfter) {
   const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', Vary: 'Origin' };
   if (origin) headers['Access-Control-Allow-Origin'] = origin;
   if (retryAfter) headers['Retry-After'] = String(retryAfter);
-  return Response.json({ ok: status === 200, ...(code && { code }) }, { status, headers });
+  return Response.json({ ok: status >= 200 && status < 300, ...(code && { code }) }, { status, headers });
 }
 
-export async function handleMessage(request, env, sendMail) {
+export async function handleMessage(request, env) {
   const origin = env.ALLOWED_ORIGIN;
   if (request.headers.get('Origin') !== origin) return reply(null, 403, 'origin');
   if (new URL(request.url).pathname !== '/message') return reply(origin, 404, 'not_found');
@@ -65,15 +65,12 @@ export async function handleMessage(request, env, sendMail) {
     const ipKey = Array.from(new Uint8Array(digest), x => x.toString(16).padStart(2, '0')).join('');
     const budget = env.MESSAGE_BUDGET.get(env.MESSAGE_BUDGET.idFromName('daily-budget'));
     const reservation = await budget.fetch(new Request('https://budget/reserve', {
-      method: 'POST', body: JSON.stringify({ key: ipKey })
+      method: 'POST', body: JSON.stringify({ key: ipKey, message: { name, email, message } })
     }));
     if (!reservation.ok) return reply(origin, 503, 'unavailable');
     const allowed = await reservation.json();
     if (allowed.code) return reply(origin, 429, allowed.code, allowed.retryAfter);
     if (allowed.ok !== true) return reply(origin, 503, 'unavailable');
-    // Reserve before SMTP: a timeout may mean mail was accepted, so refunding could bypass the cap.
-    try { await sendMail(env, { name, email, message }); }
-    catch { return reply(origin, 502, 'delivery'); }
-    return reply(origin, 200);
+    return reply(origin, 202);
   } catch { return reply(origin, 503, 'unavailable'); }
 }

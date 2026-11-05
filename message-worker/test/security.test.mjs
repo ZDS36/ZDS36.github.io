@@ -30,7 +30,6 @@ function fixture() {
   let queue = Promise.resolve();
   const saved = [];
   const calls = [];
-  let deliveryFails = false;
   const env = {
     ALLOWED_ORIGIN: 'https://zds36.github.io', TURNSTILE_SECRET: 'test-only-captcha-secret',
     SMTP_USER: 'owner@example.com', SMTP_PASSWORD: 'test-only-mail-secret', IP_HASH_SECRET: 'test-only-ip-hash-secret-not-a-real-key',
@@ -38,10 +37,10 @@ function fixture() {
       idFromName: name => name,
       get: () => ({ fetch(request) {
         const pending = queue.then(async () => {
-          const { key } = await request.json();
+          const { key, message } = await request.json();
           saved.push(key);
           const result = reserveQuota(state, key, clock);
-          if (result.next) state = result.next;
+          if (result.next) { state = result.next; calls.push(message); }
           return Response.json(result.next ? { ok: true } : result);
         });
         queue = pending.catch(() => {});
@@ -49,7 +48,6 @@ function fixture() {
       } })
     }
   };
-  const send = async (_env, message) => { calls.push(message); if (deliveryFails) throw Error('SMTP failed'); };
   const request = (overrides = {}) => {
     const data = new FormData();
     data.set('name', 'Visitor'); data.set('message', 'Hello'); data.set('cf-turnstile-response', 'test-only-token');
@@ -58,10 +56,10 @@ function fixture() {
       headers: { Origin: env.ALLOWED_ORIGIN, 'CF-Connecting-IP': '192.0.2.10', ...overrides }
     });
   };
-  return { env, send, calls, saved, request, tick: () => { clock += 60_000; }, failDelivery: () => { deliveryFails = true; } };
+  return { env, calls, saved, request, tick: () => { clock += 60_000; } };
 }
 
-test('trust boundaries, token binding, durable quota before SMTP and no raw IP storage', async t => {
+test('trust boundaries, token binding, durable acceptance without waiting for SMTP and no raw IP storage', async t => {
   const originalFetch = globalThis.fetch;
   let verification = { success: true, hostname: 'zds36.github.io', action: 'private-message' };
   const upstream = [];
@@ -72,35 +70,38 @@ test('trust boundaries, token binding, durable quota before SMTP and no raw IP s
   };
   t.after(() => { globalThis.fetch = originalFetch; });
   const f = fixture();
-  assert.equal((await handleMessage(f.request({ Origin: 'https://untrusted.example' }), f.env, f.send)).status, 403);
-  assert.equal((await handleMessage(f.request({ 'CF-Connecting-IP': '' }), f.env, f.send)).status, 400);
-  assert.equal((await handleMessage(f.request({ 'Content-Length': '20000' }), f.env, f.send)).status, 413);
-  assert.equal((await handleMessage(f.request(), { ...f.env, SMTP_PASSWORD: '' }, f.send)).status, 503);
+  assert.equal((await handleMessage(f.request({ Origin: 'https://untrusted.example' }), f.env)).status, 403);
+  assert.equal((await handleMessage(f.request({ 'CF-Connecting-IP': '' }), f.env)).status, 400);
+  assert.equal((await handleMessage(f.request({ 'Content-Length': '20000' }), f.env)).status, 413);
+  assert.equal((await handleMessage(f.request(), { ...f.env, SMTP_PASSWORD: '' })).status, 503);
   for (const invalid of [
     { success: false }, { ...verification, hostname: 'other.example' }, { ...verification, action: 'other' }
   ]) {
     verification = invalid;
-    assert.equal((await handleMessage(f.request(), f.env, f.send)).status, 400);
+    assert.equal((await handleMessage(f.request(), f.env)).status, 400);
   }
   assert.equal(f.calls.length, 0); assert.equal(f.saved.length, 0);
   verification = { success: true, hostname: 'zds36.github.io', action: 'private-message' };
-  assert.equal((await handleMessage(f.request(), f.env, f.send)).status, 200);
-  f.tick(); assert.equal((await handleMessage(f.request(), f.env, f.send)).status, 200);
-  f.tick(); assert.equal((await handleMessage(f.request(), f.env, f.send)).status, 200);
-  f.tick(); const blocked = await handleMessage(f.request(), f.env, f.send);
+  const accepted = await handleMessage(f.request(), f.env);
+  assert.equal(accepted.status, 202);
+  assert.deepEqual(await accepted.json(), { ok: true });
+  const unavailableStore = { ...f.env, MESSAGE_BUDGET: {
+    idFromName: name => name, get: () => ({ fetch: async () => { throw Error('Storage unavailable'); } })
+  } };
+  assert.equal((await handleMessage(f.request(), unavailableStore)).status, 503, 'Storage failure must never report acceptance.');
+  f.tick(); assert.equal((await handleMessage(f.request(), f.env)).status, 202);
+  f.tick(); assert.equal((await handleMessage(f.request(), f.env)).status, 202);
+  f.tick(); const blocked = await handleMessage(f.request(), f.env);
   assert.equal(blocked.status, 429); assert.equal((await blocked.json()).code, 'daily_limit');
   assert(Number(blocked.headers.get('Retry-After')) > 0);
   assert.equal(f.calls.length, 3);
   assert(f.saved.every(key => /^[a-f0-9]{64}$/.test(key) && !key.includes('192.0.2.10')));
-  const otherIP = await handleMessage(f.request({ 'CF-Connecting-IP': '192.0.2.11' }), f.env, f.send);
-  assert.equal(otherIP.status, 200);
-  const failure = fixture(); failure.failDelivery();
-  assert.equal((await handleMessage(failure.request(), failure.env, failure.send)).status, 502);
-  assert.equal((await handleMessage(failure.request(), failure.env, failure.send)).status, 429);
-  assert.equal(failure.calls.length, 1, 'SMTP failure must not enable an unbounded retry loop.');
+  const otherIP = await handleMessage(f.request({ 'CF-Connecting-IP': '192.0.2.11' }), f.env);
+  assert.equal(otherIP.status, 202);
+  assert.equal(f.calls[0].message, 'Hello', 'Accepted content must reach durable storage.');
   const burst = fixture();
-  const simultaneous = await Promise.all(Array.from({ length: 12 }, () => handleMessage(burst.request(), burst.env, burst.send)));
-  assert.equal(simultaneous.filter(response => response.status === 200).length, 1);
+  const simultaneous = await Promise.all(Array.from({ length: 12 }, () => handleMessage(burst.request(), burst.env)));
+  assert.equal(simultaneous.filter(response => response.status === 202).length, 1);
   assert.equal(burst.calls.length, 1);
   assert(upstream.length > 0);
 });

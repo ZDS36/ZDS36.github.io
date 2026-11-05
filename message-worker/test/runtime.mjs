@@ -9,7 +9,7 @@ try {
   const id = namespace.idFromName('quota-test');
   const reserve = async key => {
     const response = await namespace.get(id).fetch('https://budget/reserve', {
-      method: 'POST', body: JSON.stringify({ key })
+      method: 'POST', body: JSON.stringify({ key, message: { name: '', email: '', message: 'Local queue test, no SMTP configured.' } })
     });
     assert(response.ok);
     return response.json();

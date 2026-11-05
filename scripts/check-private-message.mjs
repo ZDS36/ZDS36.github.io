@@ -49,11 +49,7 @@ try {
     assert.equal(new URL(route.request().url()).pathname, '/message');
     if (outcome === 'network') return route.abort();
     if (outcome === 'pending') await new Promise(resolve => { finishRequest = resolve; });
-    if (outcome === 'slow') {
-      await new Promise(resolve => setTimeout(resolve, 31000));
-      if (route.request().failure()) return;
-    }
-    await route.fulfill({ status: outcome === 'error' ? 429 : 200, contentType: 'application/json', body: outcome === 'error' ? JSON.stringify({ code: rateCode }) : '{"ok":true}' });
+    await route.fulfill({ status: outcome === 'error' ? 429 : 202, contentType: 'application/json', body: outcome === 'error' ? JSON.stringify({ code: rateCode }) : '{"ok":true}' });
   };
   await page.route('https://formspree.io/**', () => { assert.fail('Retired Formspree endpoint must not be used.'); });
   await page.route('https://qa-messages.qa.workers.dev/**', interceptSubmission);
@@ -126,10 +122,10 @@ try {
   assert.equal(requests.length, previousRequests + 1);
   assert(finishRequest, 'Mock request did not start.');
   finishRequest();
-  await page.waitForFunction(() => document.getElementById('message-feedback').textContent.includes('留言已提交'));
+  await page.waitForFunction(() => document.getElementById('message-feedback').textContent.includes('发送成功'));
   assert.equal(await message.inputValue(), '');
   assert.equal(await email.inputValue(), '');
-  assert((await submit.textContent()).includes('已寄出'), 'Success must be visible on the button the visitor clicked.');
+  assert((await submit.textContent()).includes('发送成功'), 'Success must be visible on the button the visitor clicked.');
   assert(await feedback.evaluate(element => element.compareDocumentPosition(document.querySelector('.private-message__submit')) & Node.DOCUMENT_POSITION_FOLLOWING), 'Result feedback must appear before the send button.');
   assert(await submit.isDisabled(), 'A successful send needs a new verification.');
   await message.fill('下一条留言');
@@ -155,16 +151,8 @@ try {
   captchaFails = false;
   assert.deepEqual(errors, []);
 
-  outcome = 'slow';
-  await page.reload();
-  await verify();
-  await message.fill('慢回执也必须正确确认成功。');
-  await submit.click();
-  await page.waitForFunction(() => document.querySelector('.private-message__form').getAttribute('aria-busy') === 'false', null, { timeout: 35000 });
-  assert((await feedback.textContent()).includes('留言已提交'), 'A successful receipt after 31 seconds must not be reported as an unconfirmed send.');
-  assert.equal(await message.inputValue(), '');
   outcome = 'success';
-
+  await page.reload();
   await verify();
   await message.fill('等待回执超时也必须保留正文。');
   await page.evaluate(() => {
@@ -193,8 +181,8 @@ try {
       main.scrollTop += button.getBoundingClientRect().bottom - main.getBoundingClientRect().bottom + 8;
     });
     await submit.click();
-    await page.waitForFunction(() => document.getElementById('message-feedback').textContent.includes('留言已提交'));
-    assert((await submit.textContent()).includes('已寄出'));
+    await page.waitForFunction(() => document.getElementById('message-feedback').textContent.includes('发送成功'));
+    assert((await submit.textContent()).includes('发送成功'));
     assert(await feedback.evaluate(element => {
       const bounds = element.getBoundingClientRect();
       const viewport = document.getElementById('main-content').getBoundingClientRect();
@@ -207,7 +195,7 @@ try {
     }), 'The confirmed-send button must also remain visible.');
     await page.screenshot({ path: `.site-build/qa/private-message-${label}.png` });
   }
-  console.log('Passed: unconfigured form; missing, expired and unavailable CAPTCHA; token inclusion/reset; empty/invalid input; optional reply email; rate/network failures preserving text; duplicate protection; success reset; 31-second successful receipt; honest timeout feedback; responsive layout. CAPTCHA and submissions were mocked locally; no email was sent.');
+  console.log('Passed: unconfigured form; missing, expired and unavailable CAPTCHA; token inclusion/reset; empty/invalid input; optional reply email; rate/network failures preserving text; duplicate protection; success reset; accepted 202 response; honest timeout feedback; responsive layout. CAPTCHA and submissions were mocked locally; no email was sent.');
 } finally {
   await browser.close();
 }

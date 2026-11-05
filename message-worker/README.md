@@ -1,21 +1,22 @@
 # 私密留言接收端
 
-这是网站的服务端接收接口，替代可直接投递的 Formspree 地址。2026-11-04 已确认账户为 Free 并部署，密钥只保存在 Cloudflare secrets；修复 SMTP 连接后已通过云端真实发信测试，网页正常提交、QQ 实际收件与关闭旧表单仍需验收。
+这是网站的服务端接收接口，替代可直接投递的 Formspree 地址。账户已确认是 Free；用户已确认网页投递可进入 QQ 邮箱、旧 Formspree 已关闭。2026-11-05 按用户要求调整为保存后立即返回成功，邮件后台投递，不再等待 SMTP 回执。
 
 ## 已实现的规则
 
 - 同一来源 IP 每个自然日最多 3 次有效验证后的投递尝试，两次至少间隔 60 秒；以北京时间零点为界。
-- 全站每天最多 20 次投递尝试，避免换 IP 集中刷信。超限返回 HTTP 429，带 Retry-After，不调用 SMTP。
+- 全站每天最多 20 次投递尝试，避免换 IP 集中刷信。超限返回 HTTP 429，带 Retry-After，不加入待发列表。
 - 在 Cloudflare 边缘读取 CF-Connecting-IP，不信任 X-Forwarded-For；计数以 SQLite Durable Object 的事务原子更新，实例重启不会清零。
 - 服务端核验 Turnstile token、hostname 和 private-message action。仅检查网页、Referer 或 Origin 都不能替代此校验。
 - 只允许发到 SMTP_USER 自己，访客不能指定收件人、SMTP 主机或发件人。使用 smtp.qq.com:465 的 TLS，保持证书验证。
-- SMTP 超时可能意味着邮件已经被接受，因此不退还已经预留的次数；失败也可能占用当天次数。正文不在 Worker 存储中保存。只保存当前日 HMAC 化的 IP 标识与计数，不写入原始 IP，不记录留言和密钥。
+- 验证码与限流通过后，在同一 SQLite 事务保存配额、私密待发内容并安排 alarm，成功后立即返回 202；不等待 SMTP。后台逐条投递，失败保留并从 30 秒起退避重试，最长间隔 1 小时；投递后删除该条待发内容。后台重试不增加提交配额。计数只存当前日 HMAC 化的 IP 标识，不写入原始 IP，不在日志记录留言和密钥。
+- alarm 属于至少一次执行，SMTP 已接受但本地尚未删除时中断可能导致重投；同一条消息保持相同 Message-ID，不能承诺严格恰好一次投递。失败内容保留在仅服务绑定可访问的存储中，网页不提供公开读取入口。
 
 ## 零付费边界
 
 选择 Cloudflare Workers **Free**，使用免费支持的 SQLite Durable Objects。不要开通 Workers Paid 或任何付费附加项。免费额度超出时请求失败，不自动转为付费续用。Cloudflare 免费额度和 QQ SMTP 的风控限制仍以服务方为准，不能承诺永久可用或不限量。
 
-该方案不要求买域名；Worker 提供 workers.dev 地址，通知使用已有 QQ 邮箱 SMTP，不经过 Formspree 的每月 50 次额度。云端测试发现 Nodemailer 默认预解析 IP 的连接在 Workers 报 ESOCKET；原生主机名 TLS 连接可用，因此通过 getSocket 保留主机名、SNI 与证书验证。使用同一发送模块的远程预览已成功发出一封测试邮件；这不能替代网页正常通过验证码提交和 QQ 实际收件的验收。
+该方案不要求买域名；Worker 提供 workers.dev 地址，通知使用已有 QQ 邮箱 SMTP，不经过 Formspree 的每月 50 次额度。服务器接收后先返回成功，后台发邮件，成功不等于 QQ 收件箱已经出现通知。云端测试发现 Nodemailer 默认预解析 IP 的连接在 Workers 报 ESOCKET；原生主机名 TLS 连接可用，因此通过 getSocket 保留主机名、SNI 与证书验证。使用同一发送模块的远程预览已成功发出一封测试邮件；这不能替代网页正常通过验证码提交和 QQ 实际收件的验收。
 
 ## 部署步骤（不要把任何密钥发到聊天或提交 Git）
 
@@ -68,7 +69,7 @@ npm run deploy
 
 ## 本地验证
 
-`npm test` 包括输入边界、验证码失败/域名/action 不匹配、同 IP 限额、间隔、跨日、发送失败不绕过、全站上限，以及真实 Worker/SQLite 事务的并发和对象重启测试。所有通知发送都由测试替身处理，不会向邮箱发信。
+`npm test` 包括输入边界、验证码失败/域名/action 不匹配、同 IP 限额、间隔、跨日、接收与邮件投递分离、失败保留与重试、全站上限，以及真实 Worker/SQLite 事务的并发和对象重启测试。所有通知发送都由测试替身处理，不会向邮箱发信。
 
 Worker 模式网页测试：开发服务器设置 VITE_MESSAGE_ENDPOINT=https://qa-messages.qa.workers.dev/message，另一个未配置服务器应将该变量显式置空。运行根目录的 `scripts/check-private-message.mjs`，验证码和请求全部在本地拦截。
 
