@@ -1,9 +1,18 @@
 import flowerUrl from './avatar.jpg';
 import ascendantUrl from './photos/valorant-ascendant-2026-10-30.jpg';
 import afterRainSkyUrl from './photos/after-rain-sky-2026-11-04.jpg';
+import sunshowerUrl from './photos/sunshower-2026-11-07.gif';
 
 // 按实际发生日期填写；年轮会自动排序，补写过去的内容不用手动调整位置。
 export const MOMENTS = [
+  {
+    id: 'sunshower-2026-11-07',
+    date: '2026-11-07',
+    title: '太阳还在，雨已经下疯了',
+    text: '谁家太阳雨下这么大！！！',
+    tag: '日常',
+    photos: [{ src: sunshowerUrl, alt: '太阳雨下在路边，路面溅起一片水花' }]
+  },
   {
     id: 'after-rain-sky-2026-11-04',
     date: '2026-11-04',
