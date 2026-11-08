@@ -2,6 +2,7 @@ import flowerUrl from './avatar.jpg';
 import ascendantUrl from './photos/valorant-ascendant-2026-10-30.jpg';
 import afterRainSkyUrl from './photos/after-rain-sky-2026-11-04.jpg';
 import sunshowerUrl from './photos/sunshower-2026-11-07.gif';
+import sinkFishUrl from './photos/sink-fish-2026-10-23.gif';
 
 // 按实际发生日期填写；年轮会自动排序，补写过去的内容不用手动调整位置。
 export const MOMENTS = [
@@ -28,6 +29,15 @@ export const MOMENTS = [
     text: '这一天，无畏契约登上超凡一。',
     tag: '游戏',
     photos: [{ src: ascendantUrl, alt: '2026年10月30日，无畏契约晋升超凡一的段位截图' }]
+  },
+  {
+    id: 'sink-fish-2026-10-23',
+    date: '2026-10-23',
+    title: '洗手池临时改行当鱼塘',
+    text: '阳光照进洗手池，几条小鱼绕着排水口转圈。平时洗个手就走，这回倒想多看一会儿。',
+    tag: '日常',
+    photos: [{ src: sinkFishUrl, alt: '阳光下，几条橘色小鱼在白色洗手池里游动' }],
+    credit: '张刀宋大王让小小codex写的配文'
   },
   {
     id: 'learning-guitar',

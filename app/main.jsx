@@ -555,6 +555,7 @@ function SlicesView() {
                               </button>
                             ))}
                           </div>}
+                          {moment.credit && <small className="moment-card__credit">{moment.credit}</small>}
                         </article>
                       </li>
                     ))}
