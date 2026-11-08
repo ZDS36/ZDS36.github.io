@@ -55,6 +55,13 @@ for (const developmentMarker of ['/main.jsx', '@vite/client', 'localhost']) {
   }
 }
 
+const entrance = await read('public/entrance.html');
+if (entrance !== await read('.site-build/entrance.html')) {
+  throw new Error('Production entrance differs from source.');
+}
+requireMarker(entrance, 'href="/#top"', 'Entrance link to the main site');
+requireMarker(builtHtml, "location.replace('/entrance.html'", 'Production entrance route');
+
 const assetDirectory = path.join(buildRoot, 'assets');
 const assetNames = (await readdir(assetDirectory)).sort();
 const expectedAssetNames = ['site.css', 'site.jpg', 'site.js'];

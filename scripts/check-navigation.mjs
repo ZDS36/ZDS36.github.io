@@ -93,7 +93,15 @@ try {
     assert.deepEqual(result.failures, [], 'A whole view flashed transparent.');
   };
 
-  await page.goto(`${base}#top`);
+  await page.goto(base.href, { waitUntil: 'commit' });
+  await page.waitForURL(new URL('/entrance.html', base).href);
+  await page.getByRole('button', { name: '跳过动画' }).press('Enter');
+  const enter = page.getByRole('link', { name: '进入网站', exact: false });
+  assert.equal(await enter.getAttribute('href'), '/#top');
+  assert(await enter.evaluate(link => link === document.activeElement), 'Skipping must focus the entrance link.');
+  await enter.press('Enter');
+  await settled('top', false);
+  console.log('Passed: root entrance, keyboard skip and same-origin entry into the site.');
   await settled('top', false);
   assert.equal(await page.locator('.featured-work').getAttribute('href'), '#work-film');
   assert.equal(await page.locator('.work-card').count(), 4);
@@ -195,7 +203,8 @@ try {
   await page.goto(`${base}#not-a-page`);
   await settled('top', false);
   await page.waitForURL(`${base}#top`);
-  assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0, 'Unexpected persistent browser storage.');
+  assert.equal(await page.evaluate(() => localStorage.length), 0, 'Unexpected persistent browser storage.');
+  assert.deepEqual(await page.evaluate(() => Object.keys(sessionStorage)), ['between-states.swarm.build'], 'Only the entrance sequence may use session storage.');
   assert.deepEqual(await context.cookies(), [], 'Unexpected cookies.');
   assert.deepEqual(externalRequests, [], 'Unexpected external network requests.');
   assert.deepEqual(errors, [], 'Browser reported errors.');
@@ -415,7 +424,64 @@ try {
   assert.deepEqual(errors, [], 'Time tree or photo viewer reported errors.');
   assert.deepEqual(externalRequests, [], 'Time tree must use local assets.');
   console.log('Passed: time-tree dates, year/month index, photo loading, Escape, close button, focus/scroll restoration and navigation cleanup.');
-  assert.deepEqual(errors, [], 'Glass navigation reported errors.');
+
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'no-preference' });
+  await page.reload();
+  const themeButton = page.getByRole('switch', { name: '夜晚模式' });
+  const theme = () => page.locator('html').getAttribute('data-theme');
+  await themeButton.waitFor();
+  assert.equal(await theme(), 'dark');
+  assert.equal(await themeButton.innerText(), '', 'Theme switch must only show icons.');
+  const thumb = themeButton.locator('.theme-toggle__thumb');
+  const nightThumb = await thumb.boundingBox();
+  const beforeTheme = await page.evaluate(() => ({ hash: location.hash, scroll: document.querySelector('main').scrollTop }));
+  await themeButton.focus();
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => document.querySelector('.theme-toggle__thumb').getAnimations().some(animation => animation.transitionProperty === 'transform'));
+  await page.waitForFunction(() => document.getAnimations().some(animation => animation.animationName === 'theme-reveal'));
+  assert(await themeButton.evaluate(button => {
+    const { left, top, width, height } = button.getBoundingClientRect();
+    const root = document.documentElement;
+    const [x, y] = root.style.getPropertyValue('--theme-origin').split(' ').map(parseFloat);
+    const radius = parseFloat(root.style.getPropertyValue('--theme-radius'));
+    return x === left + width / 2 && y === top + height / 2
+      && radius >= Math.hypot(Math.max(x, root.clientWidth - x), Math.max(y, root.clientHeight - y));
+  }), 'Theme reveal must start at the button and reach the farthest corner.');
+  await page.waitForFunction(() => !document.documentElement.classList.contains('theme-reveal'));
+  assert.equal(await theme(), 'light');
+  assert.equal(await themeButton.getAttribute('aria-checked'), 'false');
+  assert(Math.abs(nightThumb.x - (await thumb.boundingBox()).x - nightThumb.width) < 1, 'Theme thumb must travel one segment.');
+  assert.deepEqual(await page.evaluate(() => ({ hash: location.hash, scroll: document.querySelector('main').scrollTop })), beforeTheme);
+  await page.reload();
+  assert.equal(await theme(), 'light', 'Theme choice must survive a reload.');
+
+  await themeButton.click();
+  await page.waitForFunction(() => document.getAnimations().some(animation => animation.animationName === 'theme-reveal'));
+  await page.waitForFunction(() => !document.documentElement.classList.contains('theme-reveal'));
+  assert.equal(await theme(), 'dark');
+  await themeButton.evaluate(button => {
+    button.click();
+    if (button.getAttribute('aria-checked') !== 'false') throw new Error('Switch must respond before the page snapshot.');
+    button.click();
+  });
+  assert.equal(await themeButton.getAttribute('aria-checked'), 'true');
+  assert.equal(await theme(), 'dark', 'A reversal before the snapshot must retain the requested theme.');
+  await themeButton.click();
+  await page.waitForFunction(() => document.getAnimations().some(animation => animation.animationName === 'theme-reveal'));
+  await themeButton.click();
+  await page.waitForFunction(() => !document.documentElement.classList.contains('theme-reveal'));
+  assert.equal(await theme(), 'dark', 'A reversal during the reveal must apply the latest theme.');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await themeButton.click();
+  assert.equal(await theme(), 'light');
+  assert(!await page.locator('html').evaluate(root => root.classList.contains('theme-reveal')));
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.evaluate(() => { document.startViewTransition = undefined; });
+  await themeButton.click();
+  assert.equal(await theme(), 'dark', 'Theme must change without View Transitions support.');
+  console.log('Passed: immediate theme switch feedback, two-way reveal, rapid reversal, keyboard, persistence, reduced motion and API fallback.');
+
+  assert.deepEqual(errors, [], 'Navigation or theme switching reported errors.');
   console.log('Passed: glass indicator interpolation, rapid reversal, persistent DOM, 4 responsive widths, keyboard links and reduced motion.');
   console.log('Passed: continuous wheel scrolling, parallax, active navigation, stable DOM/focus/history, mask interruption and reduced motion.');
   console.log(`Passed: ${routes.length} routes, rapid switching, stable shell, links, back/forward, focus, scroll restoration, 6 viewport sizes, deep links, and isolated browser safety checks.`);

@@ -7,6 +7,7 @@ const buildRoot = path.join(repositoryRoot, '.site-build');
 
 const files = [
   ['index.html', 'index.html'],
+  ['entrance.html', 'entrance.html'],
   [path.join('assets', 'site.js'), path.join('assets', 'site.js')],
   [path.join('assets', 'site.css'), path.join('assets', 'site.css')],
   [path.join('assets', 'site.jpg'), path.join('assets', 'site.jpg')],

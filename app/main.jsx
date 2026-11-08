@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import avatarUrl from './avatar.jpg';
@@ -124,6 +125,64 @@ function AmbientLight() {
   );
 }
 
+function ThemeToggle() {
+  const root = document.documentElement;
+  const [dark, setDark] = useState(() => root.dataset.theme !== 'light');
+  const transitionRef = useRef(null);
+
+  const toggle = (event) => {
+    const theme = dark ? 'light' : 'dark';
+    transitionRef.current?.skipTransition();
+    transitionRef.current = null;
+    flushSync(() => setDark(!dark));
+
+    const apply = () => {
+      root.dataset.theme = theme;
+      document.querySelector('meta[name="theme-color"]').content = getComputedStyle(root).getPropertyValue('--ink').trim();
+      try { localStorage.setItem('between-states-theme', theme); } catch { /* Storage may be blocked. */ }
+    };
+    if (root.dataset.theme === theme || !document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      root.classList.remove('theme-reveal');
+      apply();
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const radius = Math.hypot(Math.max(x, root.clientWidth - x), Math.max(y, root.clientHeight - y));
+    root.style.setProperty('--theme-origin', `${x}px ${y}px`);
+    root.style.setProperty('--theme-radius', `${Math.ceil(radius)}px`);
+    root.classList.add('theme-reveal');
+
+    const animation = document.startViewTransition(() => {
+      if (transitionRef.current === animation) apply();
+    });
+    transitionRef.current = animation;
+    animation.ready.catch(() => {});
+    const finish = () => {
+      if (transitionRef.current !== animation) return;
+      root.classList.remove('theme-reveal');
+      transitionRef.current = null;
+    };
+    animation.finished.then(finish, finish);
+  };
+
+  return (
+    <button className="theme-toggle" type="button" role="switch" onClick={toggle}
+      aria-label="夜晚模式" aria-checked={dark}>
+      <span className="theme-toggle__thumb" aria-hidden="true" />
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" />
+      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20.6 15.3A8.6 8.6 0 0 1 8.7 3.4a8.7 8.7 0 1 0 11.9 11.9Z" />
+      </svg>
+    </button>
+  );
+}
+
 function SiteHeader({ page }) {
   const activePage = page.startsWith('work-') ? 'works' : page;
   const trackIndicatorMotion = (event) => {
@@ -156,14 +215,13 @@ function SiteHeader({ page }) {
           onTransitionCancel={trackIndicatorMotion} />
       </nav>
 
-      <a
-        className="contact-button"
-        href="#contact"
-        aria-current={page === 'contact' ? 'page' : undefined}
-      >
-        <span>联系我</span>
-        <span aria-hidden="true">↗</span>
-      </a>
+      <div className="header-actions">
+        <ThemeToggle />
+        <a className="contact-button" href="#contact" aria-current={page === 'contact' ? 'page' : undefined}>
+          <span>联系我</span>
+          <span aria-hidden="true">↗</span>
+        </a>
+      </div>
     </header>
   );
 }
@@ -196,7 +254,7 @@ function Hero({ sharedEntering }) {
   return (
     <section className={`view home${sharedEntering ? ' view--shared-enter' : ''}`} data-view="top" aria-labelledby="hero-title">
       <div className="home__intro">
-        <p className="page-kicker"><span>00 —</span> PERSONAL SPACE · 持续生长中</p>
+        <p className="page-kicker"><span>00 —</span> 张刀宋的个人档案</p>
 
         <h1 className="home__title" id="hero-title" tabIndex="-1" aria-label="未定态 Between States">Between<br /><em>States.</em><svg className="home__title-dot" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2v28M2 16h28M6.1 6.1l19.8 19.8M6.1 25.9L25.9 6.1" stroke="currentColor" strokeWidth="1.5" /></svg></h1>
 
@@ -206,13 +264,13 @@ function Hero({ sharedEntering }) {
           </div>
           <div>
             <p className="home__name">张刀宋 <span>/ 未定态</span></p>
-            <p className="home__state"><i aria-hidden="true" /> EXPLORING & CREATING</p>
+            <p className="home__state"><i aria-hidden="true" /> 网页 · 工具 · 影像</p>
           </div>
         </div>
 
         <div className="home__statement">
           <p>把正在做的东西，<em>认真地留下来。</em></p>
-          <span>网页、工具，和生活里的小小切片。<br />在想法与成品之间，留一点探索的余地。</span>
+          <span>这里收藏我的作品，也记录生活里的小事。</span>
         </div>
 
         <div className="home__actions">
@@ -224,19 +282,17 @@ function Hero({ sharedEntering }) {
       <a className="featured-work" href="#work-film" aria-label="观看精选短片：沉没成本">
         <WorkVisual work={WORKS[0]} className="featured-work__visual" />
         <div className="featured-work__copy">
-          <span>FEATURED / 01</span>
           <div>
-            <h2>沉没成本 · 动态短片</h2>
-            <p>亲密关系中的一次重新判断。</p>
+            <p>精选短片 <span aria-hidden="true">·</span> 02:18</p>
+            <h2>沉没成本</h2>
           </div>
           <span className="featured-work__arrow" aria-hidden="true">▶</span>
         </div>
-        <span className="featured-work__watch">观看短片 <span>02:18 ↗</span></span>
       </a>
 
       <div className="home__foot">
         <p><span className="home__foot-status" /> 一个仍在生长的个人空间</p>
-        <a href="#works">向下探索 <span aria-hidden="true">↓</span></a>
+        <a href="#slices">读一读年轮 <span aria-hidden="true">↘</span></a>
         <p className="home__edition">PERSONAL ARCHIVE / 2026</p>
       </div>
     </section>
@@ -258,10 +314,11 @@ function WorkCard({ work }) {
     <a className={`work-card work-card--${work.tone}`} href={`#${work.id}`}>
       <WorkVisual work={work} className="work-card__visual" />
       <div className="work-card__copy">
-        <p>{work.meta}</p>
-        <h2>{work.title}<small>{work.subtitle}</small></h2>
-        <span>{work.summary}</span>
-        <i aria-hidden="true">↗</i>
+        <p><span>{work.number}</span> / {work.meta}</p>
+        <h2>{work.title}</h2>
+        <p className="work-card__subtitle">{work.subtitle}</p>
+        <p className="work-card__summary">{work.summary}</p>
+        <span className="work-card__action" aria-hidden="true">{work.tone === 'film' ? '观看短片 ' : ''}↗</span>
       </div>
     </a>
   );
@@ -274,7 +331,7 @@ function WorksView({ sharedEntering }) {
         index="01"
         label="SELECTED WORKS"
         title="作品"
-        intro="少量、真实、能够完整讲清楚的项目。"
+        intro="一部动态短片、两个实用工具，以及这个个人网站。"
       />
       <div className="works-grid">
         {WORKS.map((work) => <WorkCard key={work.id} work={work} />)}
@@ -455,12 +512,10 @@ function SlicesView() {
       <PageHeader index="02" label="LIFE, IN RINGS" title="年轮" intro="不必每天发生大事。小小的日常，也值得长成一圈年轮。" />
       <div className="moments-layout">
         <aside className="moments-profile" aria-label="年轮介绍">
-          <div className="moments-profile__cover" aria-hidden="true"><span>Little things,<br /><em>lasting traces.</em></span></div>
-          <img className="moments-profile__avatar" src={avatarUrl} alt="" width="64" height="64" />
-          <h2>张刀宋的时间树<span aria-hidden="true">↗</span></h2>
-          <p>把喜欢的、正在尝试的，<br />还有偶尔冒出来的念头，留在这里。</p>
-          <div className="moments-profile__meta"><span><i aria-hidden="true" /> 慢慢生长</span><span>{MOMENTS.length} 条片段</span></div>
-          <p className="moments-profile__label">循着时间，走一走</p>
+          <div className="moments-profile__heading">
+            <h2>时间索引</h2>
+            <p>{MOMENTS.length} 条片段</p>
+          </div>
           <nav className="timeline-index" aria-label="年轮时间索引">
             {TIMELINE.map(({ year, months }) => (
               <div key={year}>
@@ -487,8 +542,10 @@ function SlicesView() {
                       <li className="moment" key={moment.id}>
                         <time className="moment__date" dateTime={moment.date}><strong>{moment.date.slice(8)}</strong><span>{Number(month)} 月</span></time>
                         <article className="moment-card" aria-labelledby={`moment-${moment.id}`}>
-                          <header><img src={avatarUrl} width="36" height="36" alt="" /><div><span>张刀宋</span><time dateTime={moment.date}>{moment.date.replaceAll('-', '.')}</time></div><span className="moment-card__tag">{moment.tag}</span></header>
-                          <h4 id={`moment-${moment.id}`}>{moment.title}</h4>
+                          <header>
+                            <h4 id={`moment-${moment.id}`}>{moment.title}</h4>
+                            <span className="moment-card__tag">{moment.tag}</span>
+                          </header>
                           <p className="moment-card__text">{moment.text}</p>
                           {moment.photos.length > 0 && <div className={`moment-photos${moment.photos.length === 1 ? ' moment-photos--single' : ''}`}>
                             {moment.photos.map((image, index) => (
@@ -498,7 +555,6 @@ function SlicesView() {
                               </button>
                             ))}
                           </div>}
-                          <footer><span>生活的一小片</span><span aria-hidden="true">—</span></footer>
                         </article>
                       </li>
                     ))}
@@ -524,12 +580,11 @@ function AboutView() {
     <section className="view page about-page" data-view="about" aria-label="关于我">
       <PageHeader index="03" label="ABOUT" title="关于" />
       <div className="about-layout">
+        <p className="about-layout__lead">我是张刀宋，<br />欢迎来到未定态。</p>
         <figure className="about-layout__image">
           <img src={avatarUrl} alt="本站使用的花朵图像" />
-          <figcaption>AN OPEN ARCHIVE / 03</figcaption>
         </figure>
         <div className="about-layout__story">
-          <p className="about-layout__lead">我是张刀宋，<br />欢迎来到未定态。</p>
           <div className="about-layout__copy">
             <p>最初做这个网站，只是想做着玩。慢慢地，这里有了网页和实用工具，也有了短片、照片与生活记录。想做的东西，就试着做出来；想留住的瞬间，就放进这里。</p>
             <p>现在的作品里，有动态短片《沉没成本》、安卓工具「张刀宋净化」、课程面板，还有这个不断变化的网站。「作品」放做出来的东西，「年轮」记下沿途的日常。</p>
@@ -760,7 +815,6 @@ function App() {
         const top = section.offsetTop - main.scrollTop;
         if (top <= height * .35) current = section;
         if (top < height && top + section.offsetHeight > 0) {
-          section.classList.add('is-revealed');
           const drift = Math.max(-70, Math.min(70, (height / 2 - top - section.offsetHeight / 2) * .12));
           section.style.setProperty('--drift', motion.matches ? '0px' : `${drift}px`);
         }

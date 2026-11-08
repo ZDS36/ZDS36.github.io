@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>张刀宋｜未定态 / Between States</title>
+<style>
+:root {
+  color-scheme: dark;
+  --ground: #0c1113;
+  --stage: #10191c;
+  --surface: #152124;
+  --ink: #f5efe3;
+  --muted: #a9b8b7;
+  --edge: #354548;
+  --accent: #f4cf99;
+  --accent-hover: #ffe2b8;
+  --action-ink: #261b12;
+  --mono: "Cascadia Code", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  min-width: 280px;
+  margin: 0;
+  color: var(--ink);
+  background: var(--ground);
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+}
+button { font: inherit; }
+button:focus-visible, .enter:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 4px; }
+.shell {
+  position: relative;
+  overflow: hidden;
+  width: min(1360px, 100%);
+  min-height: 100svh;
+  margin-inline: auto;
+  padding: clamp(16px, 4vw, 58px);
+  display: grid;
+  align-content: center;
+}
+.mast, .foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mast { padding-bottom: 19px; }
+.signature { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 650; }
+.signature svg { width: 25px; color: var(--accent); }
+.edition, .status, .stage-id, .reading, .eyebrow, .latin {
+  font: 11px/1.5 var(--mono);
+  letter-spacing: .105em;
+}
+.edition, .status, .stage-id, .reading { color: var(--muted); }
+.stage {
+  isolation: isolate;
+  position: relative;
+  min-height: 540px;
+  min-height: clamp(540px, 70svh, 780px);
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  align-items: center;
+  padding: clamp(36px, 6vw, 88px);
+  background: var(--stage);
+  overflow: hidden;
+}
+.grid {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 72% 48%, #354e4d44 0%, transparent 68%),
+    linear-gradient(#c2d8d00c 1px, transparent 1px),
+    linear-gradient(90deg, #c2d8d00c 1px, transparent 1px);
+  background-size: auto, 36px 36px, 36px 36px;
+}
+.frame {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--edge);
+  pointer-events: none;
+}
+.corner { position: absolute; width: 14px; height: 14px; border: solid #af9675; }
+.corner:nth-child(1) { top: 0; left: 0; border-width: 1px 0 0 1px; }
+.corner:nth-child(2) { top: 0; right: 0; border-width: 1px 1px 0 0; }
+.corner:nth-child(3) { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+.corner:nth-child(4) { bottom: 0; left: 0; border-width: 0 0 1px 1px; }
+.stage-id { position: absolute; top: 19px; left: 22px; }
+.reading { position: absolute; bottom: 17px; right: 22px; text-align: right; }
+.reading span { color: var(--accent); }
+.copy { position: relative; z-index: 2; }
+.eyebrow { margin: 0 0 19px; color: var(--accent); }
+.title-block { position: relative; display: grid; align-items: center; min-height: 106px; }
+h1 {
+  width: max-content;
+  margin: 0;
+  padding-right: .11em;
+  font-size: clamp(64px, 8vw, 122px);
+  line-height: 1.06;
+  letter-spacing: -.025em;
+  font-weight: 720;
+  color: var(--ink);
+}
+.code-panel {
+  position: absolute;
+  inset: 50% auto auto 0;
+  width: min(100%, 310px);
+  padding: 8px 12px 9px;
+  transform: translateY(-50%);
+  border: 1px solid #4b6265;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 11px/1.48 var(--mono);
+  opacity: 0;
+  transition: opacity .22s ease;
+  pointer-events: none;
+}
+.code-panel.active { opacity: 1; }
+.code-file { display: block; margin-bottom: 4px; color: var(--muted); letter-spacing: .08em; }
+.code-line { display: block; height: 1.48em; }
+.code-line code { display: inline-block; white-space: pre; font: inherit; }
+.code-line:nth-child(3) { color: var(--accent); }
+.code-line:nth-child(4) { color: #afe1d7; }
+.latin { margin: 15px 0 0; font-size: clamp(12px, 1.5vw, 17px); color: var(--muted); letter-spacing: .19em; }
+.entry { margin-top: 31px; }
+.enter {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 28px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0 18px;
+  color: var(--action-ink);
+  background: var(--accent);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 650;
+  text-decoration: none;
+  transition: background .2s, border-color .2s;
+}
+.enter:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.enter:active { background: #e2b77e; border-color: #e2b77e; }
+.entry.building .enter { border-color: transparent; background: transparent; }
+.art { position: relative; z-index: 1; width: min(112%, 630px); margin-left: -4%; }
+.art svg { display: block; width: 100%; overflow: visible; }
+.foot { min-height: 61px; }
+.status { display: flex; align-items: center; gap: 8px; letter-spacing: .07em; }
+.lamp { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.controls { display: flex; gap: 9px; }
+.controls[hidden] { display: none; }
+.control {
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.control:hover { border-color: var(--edge); background: var(--surface); color: var(--ink); }
+.control:active { background: var(--edge); }
+.control[disabled] { color: #728181; cursor: default; border-color: transparent; background: transparent; }
+.actors { position: absolute; z-index: 4; inset: 0; pointer-events: none; }
+.actors svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--agent);
+  will-change: transform, opacity;
+  white-space: nowrap;
+  opacity: 0;
+}
+.cursor::before {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 19px;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 65%, 56% 68%, 41% 100%);
+}
+.cursor span {
+  display: block;
+  margin: -4px 0 0 13px;
+  padding: 3px 6px;
+  background: var(--agent);
+  color: #142021;
+  font: 700 9px/1.1 var(--mono);
+  letter-spacing: .06em;
+  box-shadow: 0 0 7px #0c1113a8;
+}
+.cursor.flip-x span { position: absolute; right: 10px; top: 14px; margin: 0; }
+.cursor.flip-y span { position: absolute; bottom: 18px; top: auto; }
+@media (max-width: 700px) {
+  .mast { padding-bottom: 13px; }
+  .edition { font-size: 9px; letter-spacing: .08em; }
+  .stage {
+    padding: 48px 24px 51px;
+    min-height: min(660px, max(560px, 78svh));
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .art { grid-row: 1; width: min(96%, 310px); margin: 0 auto; }
+  .copy { grid-row: 2; grid-column: 1; }
+  h1 { font-size: clamp(56px, 13.5vw, 86px); }
+  .eyebrow { margin-bottom: 9px; }
+  .latin { margin-top: 10px; }
+  .entry { margin-top: 19px; }
+  .stage-id { top: 15px; left: 16px; }
+  .reading { bottom: 12px; right: 16px; font-size: 9px; }
+  .status { font-size: 9px; }
+  .controls { gap: 8px; }
+  .control { padding-inline: 7px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="mast">
+    <div class="signature piece">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor"/><path d="M3 12h18M12 3v18" stroke="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>
+      未定态
+    </div>
+    <span class="edition piece">BETWEEN STATES / 网站入口</span>
+  </header>
+
+  <section class="stage" aria-label="未定态开场">
+    <div class="grid piece" id="grid" aria-hidden="true"></div>
+    <div class="frame piece" id="frame" aria-hidden="true">
+      <i class="corner piece"></i><i class="corner piece"></i><i class="corner piece"></i><i class="corner piece"></i>
+    </div>
+    <span class="stage-id piece" id="stage-id">FIG. 01 &nbsp;/&nbsp; 未定态</span>
+
+    <div class="copy">
+      <p class="eyebrow piece" id="eyebrow">个人网站 &nbsp;/&nbsp; PERSONAL SITE</p>
+      <div class="title-block">
+        <h1 id="title">张刀宋</h1>
+        <div class="code-panel" id="code-panel" aria-hidden="true">
+          <span class="code-file">01 / entrance.js</span>
+          <span class="code-line"><code>const scene = {</code></span>
+          <span class="code-line"><code>  title: "张刀宋",</code></span>
+          <span class="code-line"><code>  subtitle: "Between States"</code></span>
+          <span class="code-line"><code>}; mount(scene)</code></span>
+        </div>
+      </div>
+      <p class="latin piece" id="latin" lang="en">BETWEEN STATES</p>
+      <div class="entry" id="entry">
+        <a class="enter" href="/#top"><span class="piece" id="entry-label">进入网站 &nbsp;↗</span></a>
+      </div>
+    </div>
+
+    <div class="art" id="art" aria-hidden="true">
+      <svg viewBox="0 0 520 450" fill="none">
+        <defs>
+          <radialGradient id="halo"><stop stop-color="#8ec7b2" stop-opacity=".42"/><stop offset=".56" stop-color="#507a74" stop-opacity=".2"/><stop offset="1" stop-color="#31534f" stop-opacity="0"/></radialGradient>
+          <radialGradient id="body" cx=".26" cy=".24" r=".86"><stop stop-color="#fff0d1"/><stop offset=".24" stop-color="#c88e61"/><stop offset=".52" stop-color="#78513c"/><stop offset="1" stop-color="#253234"/></radialGradient>
+          <radialGradient id="shade" cx=".19" cy=".20" r=".92"><stop stop-color="#cfaa83"/><stop offset=".63" stop-color="#634737"/><stop offset="1" stop-color="#152225"/></radialGradient>
+          <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe5bb"/><stop offset=".52" stop-color="#bd8e5d"/><stop offset="1" stop-color="#526963"/></linearGradient>
+          <linearGradient id="ring-ink" x1="0" x2="1" y1="0" y2=".75"><stop stop-color="#658985"/><stop offset=".46" stop-color="#ffe4b7"/><stop offset="1" stop-color="#9f7952"/></linearGradient>
+          <clipPath id="disc"><circle cx="260" cy="225" r="105"/></clipPath>
+          <clipPath id="lit"><rect id="lit-wipe" x="155" y="120" width="210" height="210"/></clipPath>
+          <clipPath id="dark"><rect id="dark-wipe" x="155" y="120" width="210" height="210"/></clipPath>
+          <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M0 0.5H4" stroke="#f5e3ca" opacity=".13"/></pattern>
+        </defs>
+        <circle class="piece" id="glow" cx="260" cy="225" r="208" fill="url(#halo)"/>
+        <g clip-path="url(#disc)">
+          <circle cx="260" cy="225" r="105" fill="url(#body)" clip-path="url(#lit)"/>
+          <circle cx="260" cy="225" r="105" fill="url(#shade)" opacity=".75" clip-path="url(#dark)"/>
+          <circle class="piece" id="scan-lines" cx="260" cy="225" r="105" fill="url(#scan)"/>
+        </g>
+        <g stroke="#d7c9ae" stroke-opacity=".47" stroke-width="1.1">
+          <ellipse id="latitude-small" class="ink" cx="260" cy="225" rx="105" ry="33" transform="rotate(-27 260 225)"/>
+          <ellipse id="latitude-large" class="ink" cx="260" cy="225" rx="105" ry="68" transform="rotate(-27 260 225)"/>
+          <ellipse id="meridian-small" class="ink" cx="260" cy="225" rx="41" ry="105" transform="rotate(-27 260 225)"/>
+          <ellipse id="meridian-large" class="ink" cx="260" cy="225" rx="77" ry="105" transform="rotate(-27 260 225)"/>
+          <path id="equator" class="ink" d="m166 273 188-96"/>
+          <path id="inner-axis" class="ink" d="M260 129V321" opacity=".48"/>
+        </g>
+        <circle id="outline" class="ink" cx="260" cy="225" r="105" stroke="url(#rim)" stroke-width="1.4"/>
+        <circle id="axis-ring" class="ink" cx="260" cy="225" r="154" stroke="#83b5ab" opacity=".4"/>
+        <g id="ticks" stroke="#a7bdb2" opacity=".7">
+          <path class="ink" d="M428 225h30"/>
+          <path class="ink" d="M260 383v31"/>
+          <path class="ink" d="M92 225H62"/>
+          <path class="ink" d="M260 67V36"/>
+        </g>
+        <ellipse id="major-orbit" class="ink" cx="260" cy="225" rx="219" ry="65" transform="rotate(-27 260 225)" stroke="url(#ring-ink)" stroke-width="1.4"/>
+        <ellipse id="minor-orbit" class="ink" cx="260" cy="225" rx="205" ry="49" transform="rotate(-27 260 225)" stroke="#9db3a2" opacity=".65"/>
+        <g id="particles" fill="#ffe7bb" transform="rotate(-27 260 225)"></g>
+      </svg>
+    </div>
+
+    <div class="reading piece" id="reading"><span>ψ</span> &nbsp;·&nbsp; 01 / BETWEEN STATES</div>
+  </section>
+  <footer class="foot">
+    <span class="status"><span class="lamp"></span><span id="status">准备就绪</span></span>
+    <div class="controls" id="controls" hidden>
+      <button class="control" type="button" id="replay">↻ 重新编排</button>
+      <button class="control" type="button" id="skip">跳过动画</button>
+    </div>
+  </footer>
+  <div class="actors" aria-hidden="true"><svg></svg></div>
+</main>
+<script>
+(() => {
+  const $ = selector => document.querySelector(selector)
+  const stage = $('.stage')
+  const actors = $('.actors')
+  const traces = actors.querySelector('svg')
+  const entry = $('#entry')
+  const skip = $('#skip')
+  const status = $('#status')
+  const heading = $('#title')
+  const panel = $('#code-panel')
+  const codeLines = [...panel.querySelectorAll('code')]
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)')
+  const pieces = [...document.querySelectorAll('.piece')]
+  const ink = [...document.querySelectorAll('.ink')]
+  const ticks = [...document.querySelectorAll('#ticks path')]
+  const art = $('#art svg')
+  const grid = $('#grid')
+  const frameBorder = $('#frame')
+  const corners = [...frameBorder.querySelectorAll('.corner')]
+  const lit = $('#lit-wipe')
+  const shade = $('#dark-wipe')
+  const colorDetails = [$('#glow'), $('#scan-lines')]
+  const link = entry.querySelector('a')
+  const htmlNodes = [stage, link, ...pieces, ...codeLines]
+  const svgNS = 'http://www.w3.org/2000/svg'
+  const runKey = 'between-states.swarm.build'
+  const mix = (a, b, p) => a + (b - a) * p
+  const between = (a, b, p) => ({ x: mix(a.x, b.x, p), y: mix(a.y, b.y, p) })
+  const ease = p => p * p * (3 - 2 * p)
+  const arrival = 425
+  const hop = 135
+  const samples = 160
+  const paths = new Map(ink.filter(path => !ticks.includes(path)).map(path => {
+    const length = path.getTotalLength()
+    return [path, Array.from({length: samples + 1}, (_, i) => path.getPointAtLength(length * i / samples))]
+  }))
+  const orbit = $('#major-orbit')
+  const penSpecs = [
+    ['FRAME', '#e0d5c0'], ['MARK', '#d1ddd7'], ['META', '#a4bcb8'],
+    ['CODE 01', '#f6d099'], ['CODE 02', '#e0b78b'], ['CODE 03', '#a5d7cc'], ['CODE 04', '#ffe4b8'],
+    ['LAT', '#b3d7d2'], ['LAT 02', '#b9cebb'], ['MER', '#9fdecf'], ['MER 02', '#adc7c9'],
+    ['AXIS', '#c7d7a8'], ['FORM', '#c9d4c2'],
+    ['LIGHT', '#ffd39b'], ['SHADE', '#dca980'],
+    ['RING', '#f7dda9'], ['RAIL', '#d5bd95'], ['GUIDE', '#aad5c5'], ['DUST', '#f4e6b5'], ['ENTRY', '#f5ce99']
+  ]
+  let jobs = []
+  let frame
+  let building = false
+  let start = 0
+  let completeAt = 0
+  let codeAt = 0
+  let titleAt = 0
+  let titleMotion
+  let dustAt = 0
+  let bounds
+  let boxes
+  let matrices
+  let geometryDirty = true
+  let previous
+  try { previous = sessionStorage.getItem(runKey) } catch {}
+
+  function svgNode(name, attrs) {
+    const element = document.createElementNS(svgNS, name)
+    for (const [key, value] of Object.entries(attrs)) element.setAttribute(key, value)
+    return element
+  }
+
+  const pens = Object.fromEntries(penSpecs.map(([name, color]) => {
+    const cursor = document.createElement('div')
+    const label = document.createElement('span')
+    label.textContent = name
+    cursor.className = 'cursor'
+    cursor.style.setProperty('--agent', color)
+    cursor.append(label)
+    actors.append(cursor)
+    const trail = svgNode('path', {fill: 'none', stroke: color, 'stroke-width': 1})
+    const box = svgNode('rect', {fill: color, 'fill-opacity': '.075', stroke: color, 'stroke-width': 1, 'stroke-dasharray': '4 3', visibility: 'hidden'})
+    if (name === 'FRAME') box.removeAttribute('stroke-dasharray')
+    traces.append(trail, box)
+    return [name, {cursor, trail, box}]
+  }))
+  const dust = Array.from({length: 10}, (_, index) => {
+    const dot = svgNode('circle', {r: index % 3 === 0 ? 2.65 : 1.45, opacity: '.85'})
+    $('#particles').append(dot)
+    return {dot, phase: (index + 1) / 10, speed: 1 / (18000 + index * 850), born: 0}
+  })
+
+  function refreshGeometry() {
+    bounds = actors.getBoundingClientRect()
+    boxes = new Map(htmlNodes.map(node => [node, node.getBoundingClientRect()]))
+    matrices = new Map([art, ...ink].map(node => [node, node.getScreenCTM()]))
+    geometryDirty = false
+  }
+
+  function htmlPoint(node, u, v) {
+    const rect = boxes.get(node)
+    return {x: rect.left - bounds.left + rect.width * u, y: rect.top - bounds.top + rect.height * v}
+  }
+
+  function svgPoint(node, x, y) {
+    const {a, b, c, d, e, f} = matrices.get(node)
+    return {x: a * x + c * y + e - bounds.left, y: b * x + d * y + f - bounds.top}
+  }
+
+  function sample(path, p) {
+    const offset = p * samples
+    const index = Math.min(Math.floor(offset), samples - 1)
+    const points = paths.get(path)
+    return between(points[index], points[index + 1], offset - index)
+  }
+
+  function arc(from, to, p, direction) {
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const distance = Math.hypot(dx, dy)
+    const bend = Math.min(.27, 120 / Math.max(distance, 1)) * Math.sin(Math.PI * p) * direction
+    return {x: mix(from.x, to.x, p) - dy * bend, y: mix(from.y, to.y, p) + dx * bend}
+  }
+
+  function show(node, visible) {
+    node.style.opacity = visible ? '' : '0'
+  }
+
+  function wipe(node, p, reverse = false) {
+    show(node, p > 0)
+    node.style.clipPath = p === 1 ? '' : reverse
+      ? 'inset(0 0 0 ' + ((1 - p) * 100) + '%)'
+      : 'inset(0 ' + ((1 - p) * 100) + '% 0 0)'
+  }
+
+  function drawInk(path, p) {
+    path.style.visibility = p === 0 ? 'hidden' : ''
+    path.style.strokeDashoffset = 1 - p
+  }
+
+  function trace(path, duration) {
+    return {
+      duration,
+      point(p) {
+        const {x, y} = sample(path, p)
+        return svgPoint(path, x, y)
+      },
+      paint: p => drawInk(path, p)
+    }
+  }
+
+  function write(node, duration, reverse = false, characters = 0) {
+    const typed = p => characters ? Math.floor(p * characters) / characters : p
+    return {
+      duration,
+      point: p => htmlPoint(node, reverse ? 1 - typed(p) : typed(p), .62),
+      paint: p => wipe(node, typed(p), reverse)
+    }
+  }
+
+  function drag(from, to, duration, paint = () => {}) {
+    return {
+      duration, point: p => between(from(), to(), p),
+      paint(p, pen) {
+        const a = from()
+        const b = between(a, to(), p)
+        pen.box.setAttribute('x', Math.min(a.x, b.x))
+        pen.box.setAttribute('y', Math.min(a.y, b.y))
+        pen.box.setAttribute('width', Math.abs(b.x - a.x))
+        pen.box.setAttribute('height', Math.abs(b.y - a.y))
+        pen.box.setAttribute('visibility', p < 1 ? 'visible' : 'hidden')
+        paint(p)
+      }
+    }
+  }
+
+  function add(name, at, steps, launch) {
+    const side = Math.floor(Math.random() * 4)
+    const offset = .14 + Math.random() * .72
+    const direction = (Math.random() < .5 ? -1 : 1) * (.6 + Math.random() * .4)
+    const edge = () => [
+      {x: bounds.width * offset, y: 3}, {x: bounds.width - 4, y: bounds.height * offset},
+      {x: bounds.width * offset, y: bounds.height - 4}, {x: 3, y: bounds.height * offset}
+    ][side]
+    const origin = launch ?? edge
+    let time = at
+    const sequence = []
+    steps.forEach((step, index) => {
+      const travel = {
+        duration: index === 0 ? (launch ? 230 : arrival) : hop,
+        point: p => arc(lastPoints[index](), step.point(0), p, index % 2 ? -direction : direction)
+      }
+      sequence.push({ ...travel, at: time })
+      time += travel.duration
+      sequence.push({ ...step, at: time })
+      time += step.duration
+    })
+    const lastPoints = [origin, ...steps.map(step => () => step.point(1))]
+    jobs.push({pen: pens[name], at, end: time, sequence, index: 0})
+    return time
+  }
+
+  function shuffled(values) {
+    const order = [...values]
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[order[i], order[j]] = [order[j], order[i]]
+    }
+    return order
+  }
+
+  const artPoint = (x, y) => svgPoint(art, x, y)
+  const inside = (x, y) => () => artPoint(x, y)
+
+  function colorStep(mask, fromLeft) {
+    return {
+      duration: 560,
+      point: p => {
+        const x = mix(-.93, .93, fromLeft ? p : 1 - p)
+        const y = Math.sqrt(1 - x * x) * Math.sin(p * Math.PI * 6) * 83
+        return artPoint(260 + x * 105, 225 + y)
+      },
+      paint(p) {
+        const width = 210 * p
+        mask.setAttribute('x', fromLeft ? 155 : 365 - width)
+        mask.setAttribute('width', width)
+        if (fromLeft) {
+          for (const node of colorDetails) {
+            node.style.clipPath = ''
+            node.style.opacity = ease(p)
+          }
+        }
+      }
+    }
+  }
+
+  function deposit(p) {
+    const time = performance.now()
+    dust.forEach((particle, index) => {
+      if (!particle.born && p >= (index + 1) / dust.length) {
+        particle.born = time
+        particle.dot.style.visibility = ''
+      }
+    })
+  }
+
+  function drawDust(now) {
+    for (const particle of dust) {
+      if (!particle.born) continue
+      const age = reduced.matches ? 0 : Math.max(now - particle.born, 0)
+      const progress = (particle.phase + age * particle.speed) % 1
+      const {x, y} = sample(orbit, progress)
+      const dx = x - 260
+      const dy = y - 225
+      const band = .11 + .04 * Math.sin(age / 1900)
+      particle.dot.setAttribute('cx', 260 + dx * (1 + band))
+      particle.dot.setAttribute('cy', 225 + dy * (1 + band))
+      particle.dot.style.opacity = .57 + .38 * Math.sin(particle.phase * 13 + age / 1300) ** 2
+    }
+  }
+
+  function compose() {
+    const title = shuffled(codeLines.map((line, i) => ['CODE 0' + (i + 1), line]))
+    if (title[0][0] === previous) title.push(title.shift())
+    previous = title[0][0]
+    try { sessionStorage.setItem(runKey, previous) } catch {}
+    const left = Math.random() < .5
+    const frameStart = () => htmlPoint(stage, left ? 0 : 1, 0)
+    const frameEnd = () => htmlPoint(stage, left ? 1 : 0, 1)
+    add('FRAME', 30, [drag(frameStart, frameEnd, 930, p => {
+      show(grid, p > 0)
+      grid.style.clipPath = 'inset(0 ' + (left ? (1 - p) * 100 : 0) + '% ' + ((1 - p) * 100) + '% ' + (left ? 0 : (1 - p) * 100) + '%)'
+      if (p === 1) wipe(frameBorder, 1)
+    })])
+    add('MARK', 230, [write($('.signature'), 430)])
+    add('META', 860, [write($('#stage-id'), 420), write($('#eyebrow'), 460), write($('#latin'), 580)])
+    codeAt = 1080 + arrival
+    const codeEnds = title.map(([name, line], index) => {
+      const characters = line.textContent.length
+      return add(name, 1080 + index * 135, [write(line, 740 + characters * 17, false, characters)])
+    })
+    const drafts = shuffled([
+      ['LAT', [trace($('#latitude-small'), 410)], inside(236, 217)],
+      ['LAT 02', [trace($('#latitude-large'), 480)], inside(251, 211)],
+      ['MER', [trace($('#meridian-small'), 430)], inside(278, 209)],
+      ['MER 02', [trace($('#meridian-large'), 470)], inside(285, 223)],
+      ['AXIS', [trace($('#equator'), 240), trace($('#inner-axis'), 220)], inside(250, 240)],
+      ['FORM', [
+        drag(inside(155, 120), inside(365, 330), 255),
+        trace($('#outline'), 390)
+      ], inside(274, 249)]
+    ])
+    let draftEnd = 0
+    drafts.forEach(([name, steps, launch], index) => {
+      const delay = name === 'FORM' ? 220 : 0
+      draftEnd = Math.max(draftEnd, add(name, 820 + delay + index * 45, steps, launch))
+    })
+    const litEnd = add('LIGHT', draftEnd + 25, [colorStep(lit, true)], inside(210, 188))
+    const shadeEnd = add('SHADE', draftEnd + 65, [colorStep(shade, false)], inside(315, 260))
+    const ringStart = Math.max(litEnd, shadeEnd) + 25
+    const ringEnd = add('RING', ringStart, [trace(orbit, 690)])
+    const railEnd = add('RAIL', ringStart + 85, [trace($('#minor-orbit'), 550)])
+    const guide = trace($('#axis-ring'), 730)
+    const guideEnd = add('GUIDE', ringStart, [{
+      ...guide,
+      paint(p) {
+        guide.paint(p)
+        ticks.forEach((tick, index) => drawInk(tick, Math.min(1, Math.max(0, (p - index / 4) * 12))))
+      }
+    }])
+    const dustEnd = add('DUST', ringStart + 115, [{
+      duration: 690,
+      point(p) {
+        const point = sample(orbit, p)
+        return svgPoint(orbit, 260 + (point.x - 260) * 1.11, 225 + (point.y - 225) * 1.11)
+      },
+      paint: deposit
+    }])
+    const closing = Math.max(ringEnd, railEnd, guideEnd, dustEnd)
+    titleAt = Math.max(...codeEnds, closing - 580)
+    add('MARK', closing - arrival - 460, [write($('.edition'), 460, true)])
+    add('META', closing - arrival - 420, [write($('#reading'), 420, true)])
+    add('FRAME', closing - arrival - 270, [{
+      duration: 270,
+      point: frameEnd,
+      paint: p => corners.forEach(corner => wipe(corner, p))
+    }])
+    add('ENTRY', closing - arrival - hop - 660, [
+      drag(() => htmlPoint(link, 0, 0), () => htmlPoint(link, 1, 1), 320, p => {
+        entry.classList.toggle('building', p < 1)
+      }),
+      write($('#entry-label'), 340)
+    ])
+    completeAt = Math.max(closing, titleAt + 580) + 320
+  }
+
+  function hidePen(pen) {
+    pen.cursor.style.opacity = 0
+    pen.trail.style.opacity = 0
+    pen.box.setAttribute('visibility', 'hidden')
+  }
+
+  function renderJob(job, elapsed) {
+    const {pen, sequence} = job
+    if (elapsed < job.at || job.done) return
+    while (job.index < sequence.length && elapsed >= sequence[job.index].at + sequence[job.index].duration) {
+      sequence[job.index].paint?.(1, pen)
+      job.index++
+    }
+    const step = sequence[job.index] ?? sequence.at(-1)
+    const progress = Math.min(1, (elapsed - step.at) / step.duration)
+    if (job.index < sequence.length) step.paint?.(ease(progress), pen)
+    const fade = Math.max(0, Math.min((elapsed - job.at) / 160, (job.end + 310 - elapsed) / 310, 1))
+    if (elapsed >= job.end + 310) {
+      job.done = true
+      return hidePen(pen)
+    }
+    const point = step.point(ease(progress))
+    const tail = step.point(ease(Math.max(0, progress - .13)))
+    pen.cursor.classList.toggle('flip-x', point.x > bounds.width - 65)
+    pen.cursor.classList.toggle('flip-y', point.y > bounds.height - 40)
+    pen.cursor.style.transform = 'translate3d(' + point.x + 'px,' + point.y + 'px,0)'
+    pen.cursor.style.opacity = fade
+    pen.trail.style.opacity = fade * .58
+    pen.trail.setAttribute('d', 'M ' + tail.x + ' ' + tail.y + ' L ' + point.x + ' ' + point.y)
+  }
+
+  function draw(now) {
+    if (reduced.matches) return finish(document.activeElement === skip)
+    if (building) {
+      const elapsed = now - start
+      if (geometryDirty) refreshGeometry()
+      if (elapsed >= codeAt) {
+        panel.classList.add('active')
+        codeAt = Infinity
+      }
+      jobs.forEach(job => renderJob(job, elapsed))
+      if (elapsed >= titleAt) {
+        panel.classList.remove('active')
+        show(heading, true)
+        titleMotion = heading.animate([
+          {opacity: 0, transform: 'translateY(8px)'},
+          {opacity: 1, transform: 'translateY(0)'}
+        ], {duration: 480, delay: 100, fill: 'backwards', easing: 'cubic-bezier(.2,.7,.2,1)'})
+        titleAt = Infinity
+      }
+      if (elapsed >= completeAt) return finish(document.activeElement === skip)
+    }
+    if (now >= dustAt) {
+      drawDust(now)
+      dustAt = now + 32
+    }
+    frame = requestAnimationFrame(draw)
+  }
+
+  function finish(moveFocus = false) {
+    cancelAnimationFrame(frame)
+    titleMotion?.cancel()
+    building = false
+    panel.classList.remove('active')
+    show(heading, true)
+    pieces.forEach(node => wipe(node, 1))
+    ink.forEach(path => drawInk(path, 1))
+    Object.values(pens).forEach(hidePen)
+    for (const mask of [lit, shade]) {
+      mask.setAttribute('x', 155)
+      mask.setAttribute('width', 210)
+    }
+    entry.classList.remove('building')
+    entry.inert = false
+    skip.disabled = true
+    status.textContent = reduced.matches ? '静态预览' : '组装完成'
+    deposit(1)
+    drawDust(performance.now())
+    if (!reduced.matches) frame = requestAnimationFrame(draw)
+    if (moveFocus) link.focus({preventScroll: true})
+  }
+
+  function play() {
+    cancelAnimationFrame(frame)
+    if (reduced.matches) return finish()
+    titleMotion?.cancel()
+    panel.classList.remove('active')
+    show(heading, false)
+    codeLines.forEach(node => wipe(node, 0))
+    jobs = []
+    pieces.forEach(node => wipe(node, 0))
+    ink.forEach(path => {
+      path.setAttribute('pathLength', 1)
+      path.style.strokeDasharray = '1 1'
+      drawInk(path, 0)
+    })
+    dust.forEach(particle => { particle.born = 0; particle.dot.style.visibility = 'hidden' })
+    Object.values(pens).forEach(hidePen)
+    lit.setAttribute('width', 0)
+    shade.setAttribute('width', 0)
+    entry.classList.add('building')
+    entry.inert = true
+    skip.disabled = false
+    status.textContent = '光标正在搭建'
+    compose()
+    geometryDirty = true
+    dustAt = 0
+    start = performance.now()
+    building = true
+    frame = requestAnimationFrame(draw)
+  }
+
+  $('#controls').hidden = false
+  $('#replay').addEventListener('click', play)
+  skip.addEventListener('click', () => finish(true))
+  reduced.addEventListener('change', () => finish(document.activeElement === skip))
+  const geometry = new ResizeObserver(() => { geometryDirty = true })
+  geometry.observe(actors)
+  geometry.observe(stage)
+  play()
+})()
+</script>
+</body>
+</html>
