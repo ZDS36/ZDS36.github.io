@@ -3,9 +3,18 @@ import ascendantUrl from './photos/valorant-ascendant-2026-10-30.jpg';
 import afterRainSkyUrl from './photos/after-rain-sky-2026-11-04.jpg';
 import sunshowerUrl from './photos/sunshower-2026-11-07.gif';
 import sinkFishUrl from './photos/sink-fish-2026-10-23.gif';
+import powerLabUrl from './photos/power-lab-2026-11-08.jpg';
 
 // 按实际发生日期填写；年轮会自动排序，补写过去的内容不用手动调整位置。
 export const MOMENTS = [
+  {
+    id: 'power-lab-2026-11-08',
+    date: '2026-11-08',
+    title: '电力实验随手拍',
+    text: '整个实验不知道写啥懒得写了凑合看吧',
+    tag: '实验',
+    photos: [{ src: powerLabUrl, alt: '电力实验台上接着导线，面板里的橙色灯泡亮着' }]
+  },
   {
     id: 'sunshower-2026-11-07',
     date: '2026-11-07',
