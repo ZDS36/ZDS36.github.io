@@ -2,12 +2,23 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
+import './ink.css';
+import inkOpening from './ink-opening.png';
+import inkPigment from './ink-pigment.png';
 import avatarUrl from './avatar.jpg';
 import { MOMENTS } from './moments.js';
 import { groupMoments } from './timeline.js';
 import PrivateMessage from './PrivateMessage.jsx';
 
 const TIMELINE = groupMoments(MOMENTS);
+let inkReady = false;
+if (document.documentElement.startViewTransition && CSS.supports('mask-composite', 'subtract')) {
+  Promise.all([inkOpening, inkPigment].map(src => {
+    const texture = new Image();
+    texture.src = src;
+    return texture.decode();
+  })).then(() => { inkReady = true; }, () => {});
+}
 
 const FILM_URL = '/media/sunk-cost/film.mp4?v=20261026-polished';
 const FILM_HTML_URL = '/media/sunk-cost/animation.html?v=20261026-polished';
@@ -652,9 +663,20 @@ function App() {
   useEffect(() => {
     const main = mainRef.current;
     const shell = main.closest('.app-shell');
+    const stage = main.parentElement;
+    const root = document.documentElement;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const oldRestoration = history.scrollRestoration;
+    let ink = null;
+    let queuedNav = null;
     history.scrollRestoration = 'manual';
+    const stopInk = () => {
+      const active = ink;
+      ink = null;
+      queuedNav = null;
+      stage.classList.remove('ink-nav');
+      active?.skipTransition();
+    };
     const clearTransition = () => {
       maskAnimation.current?.cancel();
       maskAnimation.current = null;
@@ -669,7 +691,7 @@ function App() {
       active.target.classList.remove('work-visual--hidden');
       active.overlay.remove();
     };
-    const syncPage = () => {
+    const syncPage = (animate = !reducedMotion.matches) => {
       main.querySelector('dialog[open]')?.close();
       const nextPage = pageFromHash();
       if (window.location.hash !== `#${nextPage}`) history.replaceState(null, '', `#${nextPage}`);
@@ -682,7 +704,7 @@ function App() {
       } else if (oldPage.startsWith('work-') && nextPage.startsWith('work-')) {
         originRef.current = null;
       }
-      if ((enteringWork || returning) && !reducedMotion.matches) {
+      if ((enteringWork || returning) && animate) {
         const workId = enteringWork ? nextPage : oldPage;
         const source = main.querySelector(`[data-view="${oldPage}"] [data-work-visual="${workId}"]`);
         if (source && visualInViewport(source)) {
@@ -700,24 +722,77 @@ function App() {
       }
       pageRef.current = nextPage;
       setPage(nextPage);
-      setNavigation({ page: nextPage, focus: true, animate: !reducedMotion.matches, restore: returning ? originRef.current.scroll : null });
+      setNavigation({ page: nextPage, focus: true, animate, restore: returning ? originRef.current.scroll : null });
+    };
+    const navigate = (nextPage, animate) => {
+      if (location.hash !== `#${nextPage}`) history.pushState(null, '', `#${nextPage}`);
+      syncPage(animate);
+    };
+    const openWithInk = (nextPage, link) => {
+      if (ink) {
+        queuedNav = { nextPage, link };
+        return;
+      }
+      if (pageRef.current === nextPage || reducedMotion.matches || document.hidden || !inkReady
+        || !stage.startViewTransition || !CSS.supports('mask-composite', 'subtract')
+        || root.classList.contains('theme-reveal')) {
+        navigate(nextPage, false);
+        return;
+      }
+      const rect = main.getBoundingClientRect();
+      const anchor = link.getBoundingClientRect();
+      const x = anchor.left + anchor.width / 2 - rect.left;
+      const y = rect.height * .24;
+      const radius = Math.hypot(Math.max(x, rect.width - x), rect.height - y);
+      stage.style.setProperty('--ink-x', `${x}px`);
+      stage.style.setProperty('--ink-y', `${y}px`);
+      stage.style.setProperty('--ink-end', `${radius * 4.4}px`);
+      stage.classList.add('ink-nav');
+      const transition = stage.startViewTransition(() => {
+        if (ink === transition) flushSync(() => navigate(nextPage, false));
+      });
+      ink = transition;
+      transition.ready.catch(() => {});
+      const finish = () => {
+        if (ink !== transition) return;
+        const next = queuedNav;
+        stopInk();
+        if (next && next.nextPage !== pageRef.current) openWithInk(next.nextPage, next.link);
+      };
+      transition.finished.then(finish, finish);
     };
     const onClick = (event) => {
+      if (event.target.closest('.theme-toggle')) ink?.skipTransition();
       const link = event.target.closest('a[href^="#"]');
       if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const nextPage = link.getAttribute('href').slice(1);
       if (!PAGE_IDS.includes(nextPage)) return;
       event.preventDefault();
-      if (location.hash !== `#${nextPage}`) history.pushState(null, '', `#${nextPage}`);
-      syncPage();
+      if (link.closest('.site-header')) {
+        openWithInk(nextPage, link);
+      } else {
+        stopInk();
+        navigate(nextPage);
+      }
     };
-    const onVisibilityChange = () => { if (document.hidden) clearTransition(); };
-    const onMotionChange = () => { if (reducedMotion.matches) clearTransition(); };
+    const onHashChange = () => { stopInk(); syncPage(); };
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        ink?.skipTransition();
+        clearTransition();
+      }
+    };
+    const onMotionChange = () => {
+      if (reducedMotion.matches) {
+        ink?.skipTransition();
+        clearTransition();
+      }
+    };
     const onScroll = () => {
       const active = activeRef.current;
       if (active && Math.abs(active.target.getBoundingClientRect().top - active.to.top) > 2) clearTransition();
     };
-    window.addEventListener('hashchange', syncPage);
+    window.addEventListener('hashchange', onHashChange);
     window.addEventListener('resize', clearTransition);
     main.addEventListener('scroll', onScroll, { passive: true });
     main.addEventListener('wheel', clearTransition, { passive: true });
@@ -728,7 +803,7 @@ function App() {
     if (location.hash !== `#${pageFromHash()}`) history.replaceState(null, '', `#${pageFromHash()}`);
     return () => {
       history.scrollRestoration = oldRestoration;
-      window.removeEventListener('hashchange', syncPage);
+      window.removeEventListener('hashchange', onHashChange);
       window.removeEventListener('resize', clearTransition);
       main.removeEventListener('scroll', onScroll);
       main.removeEventListener('wheel', clearTransition);
@@ -856,20 +931,22 @@ function App() {
         event.preventDefault();
         mainRef.current.focus({ preventScroll: true });
       }}>跳到主要内容</a>
-      <AmbientLight />
       <SiteHeader page={page} />
-      <main ref={mainRef} id="main-content" className="site-main" tabIndex="-1">
-        {isDetail ? (
-          <CurrentView key={navigation.page} page={navigation.page}
-            backPage={originRef.current?.workId === navigation.page ? originRef.current.page : 'works'}
-            sharedEntering={pendingRef.current?.toPage === navigation.page} />
-        ) : (
-          <div className="archive">
-            {CHAPTERS.map(id => <CurrentView key={id} page={id} sharedEntering={pendingRef.current?.toPage === id} />)}
-          </div>
-        )}
-      </main>
-      <div ref={maskRef} className="chapter-mask" aria-hidden="true" />
+      <div className="ink-stage">
+        <AmbientLight />
+        <main ref={mainRef} id="main-content" className="site-main" tabIndex="-1">
+          {isDetail ? (
+            <CurrentView key={navigation.page} page={navigation.page}
+              backPage={originRef.current?.workId === navigation.page ? originRef.current.page : 'works'}
+              sharedEntering={pendingRef.current?.toPage === navigation.page} />
+          ) : (
+            <div className="archive">
+              {CHAPTERS.map(id => <CurrentView key={id} page={id} sharedEntering={pendingRef.current?.toPage === id} />)}
+            </div>
+          )}
+        </main>
+        <div ref={maskRef} className="chapter-mask" aria-hidden="true" />
+      </div>
       <div className="reading-progress" aria-hidden="true" />
     </div>
   );

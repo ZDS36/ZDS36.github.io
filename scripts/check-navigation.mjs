@@ -300,19 +300,31 @@ try {
     }, route);
     assert(distance < 2, `${route} failed to align with the viewport.`);
   }
-  // A mask is decorative even while running, and repeated navigation cancels its predecessor.
+  // Ink only covers the content, and rapid navigation keeps the latest destination.
+  await page.waitForFunction(() => !document.querySelector('.ink-nav'));
   await page.locator('.site-header a[href="#works"]').click();
-  const mask = await page.locator('.chapter-mask').evaluate(el => ({
-    pointer: getComputedStyle(el).pointerEvents,
-    running: el.getAnimations().some(a => a.playState === 'running'),
-    blur: el.getAnimations()[0]?.effect.getKeyframes().map(frame => frame.backdropFilter),
-    transform: getComputedStyle(el).transform
-  }));
-  assert.deepEqual(mask, { pointer: 'none', running: true, blur: ['blur(10px)', 'blur(0px)'], transform: 'none' });
-  await page.locator('.site-header a[href="#about"]').click();
-  await settled('about');
-  await page.waitForFunction(() => !document.querySelector('.chapter-mask').getAnimations().length);
-  assert(await page.locator('.chapter-mask').evaluate(el => getComputedStyle(el).opacity === '0' && getComputedStyle(el).backdropFilter === 'none'), 'Blur remained over content.');
+  await page.waitForFunction(() => document.getAnimations().some(a => a.animationName === 'ink-dissolve'));
+  await page.waitForFunction(() => document.querySelector('.reading-progress').getAnimations().some(a => a.transitionProperty === 'transform'));
+  const inkMotion = await page.evaluate(() => {
+    const stage = document.querySelector('.ink-stage');
+    const outgoing = document.getAnimations().find(a => a.animationName === 'ink-dissolve');
+    const progress = document.querySelector('.reading-progress').getAnimations().find(a => a.transitionProperty === 'transform');
+    return {
+      duration: outgoing.effect.getTiming().duration,
+      progressDuration: progress.effect.getTiming().duration,
+      mask: getComputedStyle(stage, '::view-transition-old(root)').maskImage.includes('ink-opening'),
+      incoming: getComputedStyle(stage, '::view-transition-new(root)').filter,
+      pointer: getComputedStyle(stage, '::view-transition').pointerEvents
+    };
+  });
+  assert.deepEqual(inkMotion, { duration: 1350, progressDuration: 650, mask: true, incoming: 'none', pointer: 'none' });
+  await page.evaluate(() => {
+    document.querySelector('.site-header a[href="#about"]').click();
+    document.querySelector('.site-header a[href="#slices"]').click();
+  });
+  await settled('slices');
+  await page.waitForFunction(() => !document.querySelector('.ink-nav'));
+  assert.equal(await page.locator('.reading-progress').evaluate(el => getComputedStyle(el).transitionDuration), '0s');
   await navigate('top');
   await page.waitForFunction(() => !document.querySelector('.chapter-mask').getAnimations().length);
   await page.locator('.featured-work').click();
@@ -339,7 +351,11 @@ try {
     const start = indicator.getBoundingClientRect().left;
     const end = document.querySelector('.primary-nav a[href="#about"]').getBoundingClientRect().left;
     document.querySelector('.primary-nav a[href="#about"]').click();
-    for (let frame = 0; frame < 6; frame++) await new Promise(requestAnimationFrame);
+    for (let frame = 0; frame < 24; frame++) {
+      await new Promise(requestAnimationFrame);
+      if (indicator.classList.contains('is-moving') && indicator.getBoundingClientRect().left > start
+        && getComputedStyle(indicator).filter !== 'blur(0px)' && getComputedStyle(indicator).filter !== 'none') break;
+    }
     const style = getComputedStyle(indicator);
     return { start, middle: indicator.getBoundingClientRect().left, end,
       moving: indicator.classList.contains('is-moving'), filter: style.filter, color: style.backgroundColor };
@@ -503,7 +519,7 @@ try {
 
   assert.deepEqual(errors, [], 'Navigation or theme switching reported errors.');
   console.log('Passed: glass indicator interpolation, rapid reversal, persistent DOM, 4 responsive widths, keyboard links and reduced motion.');
-  console.log('Passed: continuous wheel scrolling, parallax, active navigation, stable DOM/focus/history, mask interruption and reduced motion.');
+  console.log('Passed: continuous scrolling, parallax, stable DOM/focus/history, scoped ink, progress interpolation, rapid navigation and reduced motion.');
   console.log(`Passed: ${routes.length} routes, rapid switching, stable shell, links, back/forward, focus, scroll restoration, 6 viewport sizes, deep links, and isolated browser safety checks.`);
 } finally {
   await browser.close();

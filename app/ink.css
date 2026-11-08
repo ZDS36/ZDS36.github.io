@@ -1,0 +1,72 @@
+@property --ink-spread {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+.ink-stage {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: clip;
+  background: var(--ink);
+}
+.ink-stage .ambient { position: absolute; top: calc(-1 * var(--header-height)); }
+.ink-stage .chapter-mask { inset: 0; }
+
+/* The new snapshot stays whole underneath the dissolving old one. */
+.ink-nav { --ink-duration: 1350ms; }
+.app-shell:has(.ink-nav) .reading-progress {
+  transition: transform 650ms cubic-bezier(.22, .68, .3, 1);
+}
+.ink-nav .chapter-mask {
+  display: block;
+  opacity: 1;
+  view-transition-name: ink-pigment;
+}
+.ink-nav::view-transition { pointer-events: none; }
+.ink-nav::view-transition-group(root),
+.ink-nav::view-transition-new(root),
+.ink-nav::view-transition-old(ink-pigment),
+.ink-nav::view-transition-new(ink-pigment) { animation: none; }
+.ink-nav::view-transition-old(root),
+.ink-nav::view-transition-new(root) { mix-blend-mode: normal; }
+.ink-nav::view-transition-old(root) {
+  z-index: 1;
+  mask-image: linear-gradient(#000 0 0), url("./ink-opening.png");
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%, var(--ink-spread) var(--ink-spread);
+  mask-position: 0 0, calc(var(--ink-x) - var(--ink-spread) / 2) calc(var(--ink-y) - var(--ink-spread) / 2);
+  mask-composite: subtract;
+  animation: ink-spread var(--ink-duration) cubic-bezier(.54, .02, .47, .96) both,
+    ink-dissolve var(--ink-duration) linear both;
+}
+.ink-nav::view-transition-group(ink-pigment) {
+  z-index: 1;
+  overflow: clip;
+  background: url("./ink-pigment.png") no-repeat;
+  background-size: var(--ink-spread) var(--ink-spread);
+  background-position: calc(var(--ink-x) - var(--ink-spread) / 2) calc(var(--ink-y) - var(--ink-spread) / 2);
+  animation: ink-spread var(--ink-duration) cubic-bezier(.54, .02, .47, .96) both,
+    ink-thin var(--ink-duration) linear both;
+}
+:root[data-theme="dark"] .ink-nav::view-transition-group(ink-pigment) { filter: brightness(1.65); }
+@keyframes ink-spread {
+  0% { --ink-spread: 0px; }
+  9% { --ink-spread: calc(var(--ink-end) * .10); }
+  85%, 100% { --ink-spread: var(--ink-end); }
+}
+@keyframes ink-dissolve {
+  0%, 56% { opacity: 1; }
+  0% { filter: grayscale(0); }
+  18%, 100% { filter: grayscale(1); }
+  80% { opacity: .38; }
+  100% { opacity: 0; }
+}
+@keyframes ink-thin {
+  0%, 100% { opacity: 0; }
+  12% { opacity: .83; }
+  65% { opacity: .41; }
+  90% { opacity: .08; }
+}
