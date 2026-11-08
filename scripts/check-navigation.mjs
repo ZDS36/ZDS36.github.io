@@ -366,6 +366,24 @@ try {
       assert(await page.locator('.primary-nav__indicator').evaluate(el => !el.classList.contains('is-moving') && getComputedStyle(el).filter === 'none'), 'Indicator must settle sharply.');
     }
   }
+  await page.setViewportSize({ width: 390, height: 844 });
+  const safeArea = await context.newCDPSession(page);
+  try {
+    await safeArea.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 47 } });
+    const geometry = await page.evaluate(() => {
+      const header = document.querySelector('.site-header');
+      const mainTop = document.querySelector('.site-main').getBoundingClientRect().top;
+      const navBottom = header.querySelector('.primary-nav').getBoundingClientRect().bottom;
+      const progressBottom = document.querySelector('.reading-progress').getBoundingClientRect().bottom;
+      return { padding: parseFloat(getComputedStyle(header).paddingTop), mainTop, navBottom, progressBottom };
+    });
+    assert.equal(geometry.padding, 47);
+    assert(geometry.navBottom <= geometry.mainTop, 'Phone safe area must not push navigation over the page.');
+    assert.equal(geometry.progressBottom, geometry.mainTop, 'Reading progress must follow the padded header.');
+  } finally {
+    await safeArea.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0 } });
+    await safeArea.detach();
+  }
   await page.locator('.primary-nav a[href="#top"]').focus();
   await page.keyboard.press('Tab');
   assert.equal(await page.evaluate(() => document.activeElement.getAttribute('href')), '#works');
@@ -433,12 +451,14 @@ try {
   assert.equal(await theme(), 'dark');
   assert.equal(await themeButton.innerText(), '', 'Theme switch must only show icons.');
   const thumb = themeButton.locator('.theme-toggle__thumb');
+  assert.equal(await thumb.evaluate(node => getComputedStyle(node).transitionDuration), '0.33s');
   const nightThumb = await thumb.boundingBox();
   const beforeTheme = await page.evaluate(() => ({ hash: location.hash, scroll: document.querySelector('main').scrollTop }));
   await themeButton.focus();
   await page.keyboard.press('Space');
   await page.waitForFunction(() => document.querySelector('.theme-toggle__thumb').getAnimations().some(animation => animation.transitionProperty === 'transform'));
   await page.waitForFunction(() => document.getAnimations().some(animation => animation.animationName === 'theme-reveal'));
+  assert.equal(await page.evaluate(() => document.getAnimations().find(animation => animation.animationName === 'theme-reveal').effect.getTiming().duration), 760);
   assert(await themeButton.evaluate(button => {
     const { left, top, width, height } = button.getBoundingClientRect();
     const root = document.documentElement;
