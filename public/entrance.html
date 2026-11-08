@@ -27,8 +27,7 @@ body {
   background: var(--ground);
   font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
 }
-button { font: inherit; }
-button:focus-visible, .enter:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 4px; }
+.enter:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 4px; }
 .shell {
   position: relative;
   overflow: hidden;
@@ -144,22 +143,6 @@ h1 {
 .foot { min-height: 61px; }
 .status { display: flex; align-items: center; gap: 8px; letter-spacing: .07em; }
 .lamp { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-.controls { display: flex; gap: 9px; }
-.controls[hidden] { display: none; }
-.control {
-  min-height: 44px;
-  padding: 0 11px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  color: var(--muted);
-  background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-  font-size: 13px;
-}
-.control:hover { border-color: var(--edge); background: var(--surface); color: var(--ink); }
-.control:active { background: var(--edge); }
-.control[disabled] { color: #728181; cursor: default; border-color: transparent; background: transparent; }
 .actors { position: absolute; z-index: 4; inset: 0; pointer-events: none; }
 .actors svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .cursor {
@@ -210,8 +193,6 @@ h1 {
   .stage-id { top: 15px; left: 16px; }
   .reading { bottom: 12px; right: 16px; font-size: 9px; }
   .status { font-size: 9px; }
-  .controls { gap: 8px; }
-  .control { padding-inline: 7px; font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -298,10 +279,6 @@ h1 {
   </section>
   <footer class="foot">
     <span class="status"><span class="lamp"></span><span id="status">准备就绪</span></span>
-    <div class="controls" id="controls" hidden>
-      <button class="control" type="button" id="replay">↻ 重新编排</button>
-      <button class="control" type="button" id="skip">跳过动画</button>
-    </div>
   </footer>
   <div class="actors" aria-hidden="true"><svg></svg></div>
 </main>
@@ -312,7 +289,6 @@ h1 {
   const actors = $('.actors')
   const traces = actors.querySelector('svg')
   const entry = $('#entry')
-  const skip = $('#skip')
   const status = $('#status')
   const heading = $('#title')
   const panel = $('#code-panel')
@@ -364,6 +340,10 @@ h1 {
   let boxes
   let matrices
   let geometryDirty = true
+  let audio
+  const Audio = window.AudioContext ?? window.webkitAudioContext
+  const audioGestures = new AbortController()
+  const voices = new Map()
   let previous
   try { previous = sessionStorage.getItem(runKey) } catch {}
 
@@ -638,9 +618,94 @@ h1 {
   }
 
   function hidePen(pen) {
+    stopScratch(pen)
     pen.cursor.style.opacity = 0
     pen.trail.style.opacity = 0
     pen.box.setAttribute('visibility', 'hidden')
+  }
+
+  function createAudio() {
+    const context = new Audio()
+    const paper = context.createBuffer(1, Math.floor(context.sampleRate * 1.4), context.sampleRate)
+    const samples = paper.getChannelData(0)
+    let grain = 0
+    let texture = 0
+    for (let i = 0; i < samples.length; i++) {
+      const grit = Math.random() * 2 - 1
+      grain = .66 * grain + .34 * grit
+      texture = .993 * texture + .007 * Math.abs(grit)
+      samples[i] = (.72 * grain + .28 * grit) * (.48 + texture)
+    }
+    const mix = context.createDynamicsCompressor()
+    mix.threshold.value = -22
+    mix.ratio.value = 5
+    mix.attack.value = .005
+    mix.release.value = .12
+    const output = context.createGain()
+    output.gain.value = .76
+    mix.connect(output).connect(context.destination)
+    return {context, paper, mix}
+  }
+
+  function scratchVoice(pen) {
+    const {context, paper, mix} = audio
+    const source = context.createBufferSource()
+    source.buffer = paper
+    source.loop = true
+    const filter = context.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.Q.value = .62
+    const gain = context.createGain()
+    gain.gain.value = 0
+    source.connect(filter).connect(gain)
+    const pan = context.createStereoPanner?.()
+    if (pan) gain.connect(pan).connect(mix)
+    else gain.connect(mix)
+    source.onended = () => {
+      source.disconnect()
+      filter.disconnect()
+      gain.disconnect()
+      pan?.disconnect()
+    }
+    source.start(0, Math.random() * paper.duration)
+    const voice = {source, filter, gain, pan}
+    voices.set(pen, voice)
+    return voice
+  }
+
+  function stopScratch(pen) {
+    const voice = voices.get(pen)
+    if (!voice) return
+    voices.delete(pen)
+    const now = audio.context.currentTime
+    voice.gain.gain.setTargetAtTime(0, now, .018)
+    voice.source.stop(now + .09)
+  }
+
+  function scratch(job, point, elapsed, contact, fade) {
+    const previous = job.soundPoint
+    if (previous && elapsed - previous.elapsed < 32) return
+    job.soundPoint = {...point, elapsed}
+    if (!previous) return
+    const dt = elapsed - previous.elapsed
+    const speed = dt > 120 ? 0 : Math.hypot(point.x - previous.x, point.y - previous.y) * 1000 / dt
+    const friction = Math.min(1, Math.max(0, (speed - 16) / (Math.min(bounds.width, 960) * .95)))
+    const voice = voices.get(job.pen) ?? (friction ? scratchVoice(job.pen) : null)
+    if (!voice) return
+    const now = audio.context.currentTime
+    const pressure = contact ? .32 : .085
+    voice.gain.gain.setTargetAtTime(pressure * Math.sqrt(friction) * fade, now, .027)
+    voice.filter.frequency.setTargetAtTime((contact ? 920 : 1500) + friction * 1750, now, .042)
+    voice.source.playbackRate.setTargetAtTime(.76 + friction * .51, now, .044)
+    voice.pan?.pan.setTargetAtTime(Math.min(.72, Math.max(-.72, (point.x / bounds.width - .5) * 1.55)), now, .06)
+  }
+
+  function startSound() {
+    if (!building || audio?.context.state === 'running') return
+    try {
+      audio ??= createAudio()
+      audio.context.resume().catch(() => {})
+    } catch {}
   }
 
   function renderJob(job, elapsed) {
@@ -659,6 +724,7 @@ h1 {
       return hidePen(pen)
     }
     const point = step.point(ease(progress))
+    if (audio?.context.state === 'running' && !document.hidden) scratch(job, point, elapsed, Boolean(step.paint), fade)
     const tail = step.point(ease(Math.max(0, progress - .13)))
     pen.cursor.classList.toggle('flip-x', point.x > bounds.width - 65)
     pen.cursor.classList.toggle('flip-y', point.y > bounds.height - 40)
@@ -669,7 +735,7 @@ h1 {
   }
 
   function draw(now) {
-    if (reduced.matches) return finish(document.activeElement === skip)
+    if (reduced.matches) return finish()
     if (building) {
       const elapsed = now - start
       if (geometryDirty) refreshGeometry()
@@ -687,7 +753,7 @@ h1 {
         ], {duration: 480, delay: 100, fill: 'backwards', easing: 'cubic-bezier(.2,.7,.2,1)'})
         titleAt = Infinity
       }
-      if (elapsed >= completeAt) return finish(document.activeElement === skip)
+      if (elapsed >= completeAt) return finish()
     }
     if (now >= dustAt) {
       drawDust(now)
@@ -696,7 +762,7 @@ h1 {
     frame = requestAnimationFrame(draw)
   }
 
-  function finish(moveFocus = false) {
+  function finish() {
     cancelAnimationFrame(frame)
     titleMotion?.cancel()
     building = false
@@ -705,18 +771,22 @@ h1 {
     pieces.forEach(node => wipe(node, 1))
     ink.forEach(path => drawInk(path, 1))
     Object.values(pens).forEach(hidePen)
+    audioGestures.abort()
+    if (audio) {
+      const {context} = audio
+      audio = undefined
+      setTimeout(() => context.close().catch(() => {}), 120)
+    }
     for (const mask of [lit, shade]) {
       mask.setAttribute('x', 155)
       mask.setAttribute('width', 210)
     }
     entry.classList.remove('building')
     entry.inert = false
-    skip.disabled = true
     status.textContent = reduced.matches ? '静态预览' : '组装完成'
     deposit(1)
     drawDust(performance.now())
     if (!reduced.matches) frame = requestAnimationFrame(draw)
-    if (moveFocus) link.focus({preventScroll: true})
   }
 
   function play() {
@@ -739,7 +809,6 @@ h1 {
     shade.setAttribute('width', 0)
     entry.classList.add('building')
     entry.inert = true
-    skip.disabled = false
     status.textContent = '光标正在搭建'
     compose()
     geometryDirty = true
@@ -749,14 +818,20 @@ h1 {
     frame = requestAnimationFrame(draw)
   }
 
-  $('#controls').hidden = false
-  $('#replay').addEventListener('click', play)
-  skip.addEventListener('click', () => finish(true))
-  reduced.addEventListener('change', () => finish(document.activeElement === skip))
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) voices.forEach((_, pen) => stopScratch(pen))
+  })
+  reduced.addEventListener('change', finish)
   const geometry = new ResizeObserver(() => { geometryDirty = true })
   geometry.observe(actors)
   geometry.observe(stage)
   play()
+  if (building && Audio) {
+    const options = {signal: audioGestures.signal}
+    document.addEventListener('click', startSound, options)
+    document.addEventListener('keydown', startSound, options)
+    startSound()
+  }
 })()
 </script>
 </body>

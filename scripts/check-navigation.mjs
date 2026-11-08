@@ -95,14 +95,14 @@ try {
 
   await page.goto(base.href, { waitUntil: 'commit' });
   await page.waitForURL(new URL('/entrance.html', base).href);
-  await page.getByRole('button', { name: '跳过动画' }).press('Enter');
+  await page.locator('#entry.building').waitFor();
+  assert.equal(await page.locator('#skip, #replay').count(), 0, 'Entrance must not show skip or replay controls.');
+  await page.waitForFunction(() => !document.getElementById('entry').inert);
   const enter = page.getByRole('link', { name: '进入网站', exact: false });
   assert.equal(await enter.getAttribute('href'), '/#top');
-  assert(await enter.evaluate(link => link === document.activeElement), 'Skipping must focus the entrance link.');
   await enter.press('Enter');
   await settled('top', false);
-  console.log('Passed: root entrance, keyboard skip and same-origin entry into the site.');
-  await settled('top', false);
+  console.log('Passed: root entrance, animation completion and same-origin keyboard entry into the site.');
   assert.equal(await page.locator('.featured-work').getAttribute('href'), '#work-film');
   assert.equal(await page.locator('.work-card').count(), 4);
   assert.deepEqual(videoRequests, [], 'Homepage must not download the film.');
