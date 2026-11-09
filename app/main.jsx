@@ -2,24 +2,13 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
-import './ink.css';
-import inkOpening from './ink-opening.png';
-import inkPigment from './ink-pigment.png';
+import { pickNavigationTransition } from './navigation-transitions.js';
 import avatarUrl from './avatar.jpg';
 import { MOMENTS } from './moments.js';
 import { groupMoments } from './timeline.js';
 import PrivateMessage from './PrivateMessage.jsx';
 
 const TIMELINE = groupMoments(MOMENTS);
-let inkReady = false;
-if (document.documentElement.startViewTransition && CSS.supports('mask-composite', 'subtract')) {
-  Promise.all([inkOpening, inkPigment].map(src => {
-    const texture = new Image();
-    texture.src = src;
-    return texture.decode();
-  })).then(() => { inkReady = true; }, () => {});
-}
-
 const FILM_URL = '/media/sunk-cost/film.mp4?v=20261026-polished';
 const FILM_HTML_URL = '/media/sunk-cost/animation.html?v=20261026-polished';
 const FILM_POSTER = '/media/sunk-cost/poster.jpg?v=20261026-polished';
@@ -667,15 +656,14 @@ function App() {
     const root = document.documentElement;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const oldRestoration = history.scrollRestoration;
-    let ink = null;
+    let activeNavigation = null;
     let queuedNav = null;
     history.scrollRestoration = 'manual';
-    const stopInk = () => {
-      const active = ink;
-      ink = null;
+    const stopNavigationTransition = () => {
+      const active = activeNavigation;
+      activeNavigation = null;
       queuedNav = null;
-      stage.classList.remove('ink-nav');
-      active?.skipTransition();
+      active?.effect?.cancel();
     };
     const clearTransition = () => {
       maskAnimation.current?.cancel();
@@ -728,63 +716,69 @@ function App() {
       if (location.hash !== `#${nextPage}`) history.pushState(null, '', `#${nextPage}`);
       syncPage(animate);
     };
-    const openWithInk = (nextPage, link) => {
-      if (ink) {
+    const openWithTransition = (nextPage, link) => {
+      if (activeNavigation) {
         queuedNav = { nextPage, link };
         return;
       }
-      if (pageRef.current === nextPage || reducedMotion.matches || document.hidden || !inkReady
-        || !stage.startViewTransition || !CSS.supports('mask-composite', 'subtract')
-        || root.classList.contains('theme-reveal')) {
+      const context = { stage, main, link };
+      const canAnimate = pageRef.current !== nextPage && !reducedMotion.matches && !document.hidden
+        && !root.classList.contains('theme-reveal');
+      const effect = canAnimate ? pickNavigationTransition(context) : null;
+      if (!effect) {
         navigate(nextPage, false);
         return;
       }
-      const rect = main.getBoundingClientRect();
-      const anchor = link.getBoundingClientRect();
-      const x = anchor.left + anchor.width / 2 - rect.left;
-      const y = rect.height * .24;
-      const radius = Math.hypot(Math.max(x, rect.width - x), rect.height - y);
-      stage.style.setProperty('--ink-x', `${x}px`);
-      stage.style.setProperty('--ink-y', `${y}px`);
-      stage.style.setProperty('--ink-end', `${radius * 4.4}px`);
-      stage.classList.add('ink-nav');
-      const transition = stage.startViewTransition(() => {
-        if (ink === transition) flushSync(() => navigate(nextPage, false));
-      });
-      ink = transition;
-      transition.ready.catch(() => {});
-      const finish = () => {
-        if (ink !== transition) return;
-        const next = queuedNav;
-        stopInk();
-        if (next && next.nextPage !== pageRef.current) openWithInk(next.nextPage, next.link);
+
+      const active = { effect: null, committed: false };
+      activeNavigation = active;
+      const commit = () => {
+        if (activeNavigation !== active || active.committed) return;
+        active.committed = true;
+        flushSync(() => navigate(nextPage, false));
       };
-      transition.finished.then(finish, finish);
+      const finish = () => {
+        if (activeNavigation !== active) return;
+        commit();
+        const next = queuedNav;
+        stopNavigationTransition();
+        if (next && next.nextPage !== pageRef.current) openWithTransition(next.nextPage, next.link);
+      };
+      try {
+        active.effect = effect.start(context, commit);
+        active.effect.finished.then(finish, finish);
+      } catch {
+        finish();
+      }
     };
     const onClick = (event) => {
-      if (event.target.closest('.theme-toggle')) ink?.skipTransition();
+      if (event.target.closest('.theme-toggle')) activeNavigation?.effect?.cancel();
       const link = event.target.closest('a[href^="#"]');
       if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const nextPage = link.getAttribute('href').slice(1);
       if (!PAGE_IDS.includes(nextPage)) return;
       event.preventDefault();
       if (link.closest('.site-header')) {
-        openWithInk(nextPage, link);
+        openWithTransition(nextPage, link);
       } else {
-        stopInk();
+        stopNavigationTransition();
         navigate(nextPage);
       }
     };
-    const onHashChange = () => { stopInk(); syncPage(); };
+    const onHashChange = () => { stopNavigationTransition(); syncPage(); };
+    const onResize = () => {
+      activeNavigation?.effect?.cancel();
+      clearTransition();
+    };
     const onVisibilityChange = () => {
       if (document.hidden) {
-        ink?.skipTransition();
+        activeNavigation?.effect?.cancel();
         clearTransition();
       }
     };
     const onMotionChange = () => {
       if (reducedMotion.matches) {
-        ink?.skipTransition();
+        activeNavigation?.effect?.cancel();
         clearTransition();
       }
     };
@@ -793,7 +787,7 @@ function App() {
       if (active && Math.abs(active.target.getBoundingClientRect().top - active.to.top) > 2) clearTransition();
     };
     window.addEventListener('hashchange', onHashChange);
-    window.addEventListener('resize', clearTransition);
+    window.addEventListener('resize', onResize);
     main.addEventListener('scroll', onScroll, { passive: true });
     main.addEventListener('wheel', clearTransition, { passive: true });
     main.addEventListener('touchstart', clearTransition, { passive: true });
@@ -806,13 +800,14 @@ function App() {
     return () => {
       history.scrollRestoration = oldRestoration;
       window.removeEventListener('hashchange', onHashChange);
-      window.removeEventListener('resize', clearTransition);
+      window.removeEventListener('resize', onResize);
       main.removeEventListener('scroll', onScroll);
       main.removeEventListener('wheel', clearTransition);
       main.removeEventListener('touchstart', clearTransition);
       shell.removeEventListener('click', onClick);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       reducedMotion.removeEventListener('change', onMotionChange);
+      stopNavigationTransition();
       clearTransition();
     };
   }, []);

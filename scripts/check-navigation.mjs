@@ -315,6 +315,7 @@ try {
   assert(await page.evaluate(() => window.scrollHistoryLength === history.length), 'Scroll polluted history.');
   assert(await page.evaluate(() => window.startDepth !== document.querySelector('.app-shell').style.getPropertyValue('--depth')), 'Parallax did not respond to scroll.');
   assert.equal(await page.locator('.primary-nav [aria-current="page"]').getAttribute('href'), '#works');
+  await page.evaluate(() => { window.originalRandom = Math.random; Math.random = () => 0; });
   for (const route of ['slices', 'about', 'contact', 'top']) {
     await page.locator(`.site-header a[href="#${route}"]`).first().click();
     await settled(route);
@@ -349,6 +350,32 @@ try {
   await settled('slices');
   await page.waitForFunction(() => !document.querySelector('.ink-nav'));
   assert.equal(await page.locator('.reading-progress').evaluate(el => getComputedStyle(el).transitionDuration), '0s');
+  await page.evaluate(() => {
+    Math.random = () => .99;
+    const frame = document.createElement('iframe');
+    frame.id = 'offscreen-challenge';
+    frame.srcdoc = '<p>Offscreen verification fixture</p>';
+    document.querySelector('[data-view="contact"]').append(frame);
+  });
+  await page.locator('.site-header a[href="#about"]').click();
+  await settled('about');
+  await page.waitForFunction(() => {
+    const overlay = document.querySelector('.paper-tear');
+    return overlay?.inert && overlay.querySelectorAll('.paper-sheet').length === 2
+      && [...overlay.querySelectorAll('.paper-edge path')].every(path => path.getAttribute('d')?.length > 50)
+      && !overlay.querySelector('iframe[src], iframe[srcdoc]')
+      && !document.querySelector('.ink-nav');
+  });
+  await page.evaluate(() => {
+    document.querySelector('.site-header a[href="#works"]').click();
+    document.querySelector('.site-header a[href="#top"]').click();
+  });
+  await settled('top');
+  await page.waitForFunction(() => !document.querySelector('.paper-tear'));
+  await page.evaluate(() => {
+    document.getElementById('offscreen-challenge').remove();
+    Math.random = window.originalRandom;
+  });
   await navigate('top');
   await page.waitForFunction(() => !document.querySelector('.chapter-mask').getAnimations().length);
   await page.locator('.featured-work').click();
@@ -543,7 +570,7 @@ try {
 
   assert.deepEqual(errors, [], 'Navigation or theme switching reported errors.');
   console.log('Passed: glass indicator interpolation, rapid reversal, persistent DOM, 4 responsive widths, keyboard links and reduced motion.');
-  console.log('Passed: continuous scrolling, parallax, stable DOM/focus/history, scoped ink, progress interpolation, rapid navigation and reduced motion.');
+  console.log('Passed: continuous scrolling, parallax, stable DOM/focus/history, randomized ink and paper tear, progress interpolation, rapid navigation and reduced motion.');
   console.log(`Passed: ${routes.length} routes, rapid switching, stable shell, links, back/forward, focus, scroll restoration, 6 viewport sizes, deep links, and isolated browser safety checks.`);
 } finally {
   await browser.close();
