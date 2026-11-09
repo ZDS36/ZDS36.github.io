@@ -1,4 +1,5 @@
 import './paper-tear.css';
+import { canSnapshotMain } from './navigation-snapshot.js';
 
 const clamp = value => Math.max(0, Math.min(1, value));
 const ease = value => {
@@ -100,15 +101,8 @@ function playPaperTear(stage, main) {
 
 export const paperTearTransition = {
   // shortcut: the paper copies are DOM clones, use a pixel snapshot to animate live media.
-  supports({ main }) {
-    if (!CSS.supports('clip-path', 'polygon(0% 0%, 100% 0%, 100% 100%)')
-      || main.querySelector('video, dialog[open]')) return false;
-    const viewport = main.getBoundingClientRect();
-    return !Array.from(main.querySelectorAll('iframe')).some(frame => {
-      const rect = frame.getBoundingClientRect();
-      return rect.width > 0 && rect.height > 0 && rect.bottom > viewport.top && rect.top < viewport.bottom;
-    });
-  },
+  supports: ({ main }) => CSS.supports('clip-path', 'polygon(0% 0%, 100% 0%, 100% 100%)')
+    && canSnapshotMain(main),
   start({ stage, main }, commit) {
     const transition = playPaperTear(stage, main);
     commit();

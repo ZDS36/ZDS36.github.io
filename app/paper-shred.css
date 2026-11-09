@@ -1,0 +1,11 @@
+.paper-shred-layer {
+  position: absolute;
+  z-index: 22;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.app-shell:has(.paper-shred-layer) .reading-progress {
+  transition: transform 650ms cubic-bezier(.22, .68, .3, 1);
+}

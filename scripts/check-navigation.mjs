@@ -351,7 +351,7 @@ try {
   await page.waitForFunction(() => !document.querySelector('.ink-nav'));
   assert.equal(await page.locator('.reading-progress').evaluate(el => getComputedStyle(el).transitionDuration), '0s');
   await page.evaluate(() => {
-    Math.random = () => .99;
+    Math.random = () => .5;
     const frame = document.createElement('iframe');
     frame.id = 'offscreen-challenge';
     frame.srcdoc = '<p>Offscreen verification fixture</p>';
@@ -372,6 +372,15 @@ try {
   });
   await settled('top');
   await page.waitForFunction(() => !document.querySelector('.paper-tear'));
+  await page.evaluate(() => { Math.random = () => .99; });
+  await page.locator('.site-header a[href="#works"]').click();
+  await settled('works');
+  await page.waitForFunction(() => {
+    const layer = document.querySelector('.paper-shred-layer');
+    return layer?.dataset.direction === 'right' && layer.width > 0
+      && !document.querySelector('.ink-nav, .paper-tear');
+  });
+  await page.waitForFunction(() => !document.querySelector('.paper-shred-layer'));
   await page.evaluate(() => {
     document.getElementById('offscreen-challenge').remove();
     Math.random = window.originalRandom;
@@ -570,7 +579,7 @@ try {
 
   assert.deepEqual(errors, [], 'Navigation or theme switching reported errors.');
   console.log('Passed: glass indicator interpolation, rapid reversal, persistent DOM, 4 responsive widths, keyboard links and reduced motion.');
-  console.log('Passed: continuous scrolling, parallax, stable DOM/focus/history, randomized ink and paper tear, progress interpolation, rapid navigation and reduced motion.');
+  console.log('Passed: continuous scrolling, parallax, stable DOM/focus/history, all three randomized transitions, progress interpolation, rapid navigation and reduced motion.');
   console.log(`Passed: ${routes.length} routes, rapid switching, stable shell, links, back/forward, focus, scroll restoration, 6 viewport sizes, deep links, and isolated browser safety checks.`);
 } finally {
   await browser.close();
