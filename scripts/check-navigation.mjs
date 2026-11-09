@@ -93,7 +93,7 @@ try {
     assert.deepEqual(result.failures, [], 'A whole view flashed transparent.');
   };
 
-  await page.goto(base.href, { waitUntil: 'commit' });
+  await page.goto(new URL('/entrance.html', base).href, { waitUntil: 'commit' });
   const entrance = page.frameLocator('#site-entrance');
   await entrance.locator('#entry.building').waitFor();
   assert.equal(await entrance.locator('#skip, #replay').count(), 0, 'Entrance must not show skip or replay controls.');
@@ -102,6 +102,20 @@ try {
   await entrance.locator('#entry.finished').waitFor();
   const enter = entrance.getByRole('link', { name: '进入网站', exact: false });
   assert.equal(await enter.getAttribute('href'), '/#top');
+  await page.evaluate(() => {
+    window.sawStaggeredNavigation = false;
+    const deadline = performance.now() + 4000;
+    function sample() {
+      if (!document.getElementById('site-entrance')) {
+        const links = document.querySelectorAll('.primary-nav a');
+        const opacity = node => Number(getComputedStyle(node).opacity);
+        window.sawStaggeredNavigation = opacity(links[0]) > 0 && opacity(links[3]) === 0
+          && opacity(document.querySelector('.home__title')) === 0;
+      }
+      if (!window.sawStaggeredNavigation && performance.now() < deadline) requestAnimationFrame(sample);
+    }
+    requestAnimationFrame(sample);
+  });
   await enter.press('Enter');
   await entrance.locator('.loader-gather').waitFor();
   await entrance.locator('.loader-seam').waitFor({state: 'attached'});
@@ -111,6 +125,7 @@ try {
   assert.equal(await page.locator('#root').evaluate(root => root.inert), false);
   assert.equal(await page.locator('.site-main').evaluate(main => document.activeElement === main), true);
   await page.waitForFunction(() => getComputedStyle(document.querySelector('.featured-work')).opacity === '1');
+  assert.equal(await page.evaluate(() => window.sawStaggeredNavigation), true);
   console.log('Passed: root entrance, loading lockup, split and keyboard handoff to the mounted homepage.');
   assert.equal(await page.locator('.featured-work').getAttribute('href'), '#work-film');
   assert.equal(await page.locator('.work-card').count(), 4);
