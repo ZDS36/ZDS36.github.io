@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#151913" />
     <meta name="color-scheme" content="dark light" />
-    <style>#root[data-entrance] :is(.brand,.primary-nav a,.primary-nav__indicator,.header-actions,.home__intro>*,.home>.featured-work,.home>.home__foot){opacity:0}</style>
+    <style>#root[data-entrance] :is(.brand,.primary-nav a,.primary-nav__indicator,.header-actions,.home__intro>*,.home>.pixel-weather,.home>.featured-work,.home>.home__foot){opacity:0}</style>
     <script>
       (() => {
         let theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
@@ -71,7 +71,7 @@
               });
             };
             assemble('.brand, .primary-nav a, .primary-nav__indicator, .header-actions', 65);
-            assemble('.home__intro > *, .home > .featured-work, .home > .home__foot', 490);
+            assemble('.home > .pixel-weather, .home__intro > *, .home > .featured-work, .home > .home__foot', 490);
           }
           delete root.dataset.entrance;
           root.inert = false;

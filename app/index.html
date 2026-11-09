@@ -7,7 +7,7 @@
     <meta name="color-scheme" content="dark light" />
     <style>
       /* Keep the pieces hidden even when the browser has cached an older site.css. */
-      #root[data-entrance] :is(.brand, .primary-nav a, .primary-nav__indicator, .header-actions, .home__intro > *, .home > .featured-work, .home > .home__foot) {
+      #root[data-entrance] :is(.brand, .primary-nav a, .primary-nav__indicator, .header-actions, .home__intro > *, .home > .pixel-weather, .home > .featured-work, .home > .home__foot) {
         opacity: 0;
       }
     </style>
@@ -74,7 +74,7 @@
               });
             };
             assemble('.brand, .primary-nav a, .primary-nav__indicator, .header-actions', 65);
-            assemble('.home__intro > *, .home > .featured-work, .home > .home__foot', 490);
+            assemble('.home > .pixel-weather, .home__intro > *, .home > .featured-work, .home > .home__foot', 490);
           }
           delete root.dataset.entrance;
           root.inert = false;

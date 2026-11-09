@@ -8,6 +8,7 @@ import avatarUrl from './avatar.jpg';
 import { MOMENTS } from './moments.js';
 import { groupMoments } from './timeline.js';
 import PrivateMessage from './PrivateMessage.jsx';
+import PixelWeather from './PixelWeather.jsx';
 
 const TIMELINE = groupMoments(MOMENTS);
 const FILM_URL = '/media/sunk-cost/film.mp4?v=20261026-polished';
@@ -263,9 +264,10 @@ function WorkVisual({ work, className = '' }) {
   );
 }
 
-function Hero({ sharedEntering }) {
+function Hero({ sharedEntering, isHomeActive }) {
   return (
     <section className={`view home${sharedEntering ? ' view--shared-enter' : ''}`} data-view="top" aria-labelledby="hero-title">
+      <PixelWeather active={isHomeActive} />
       <div className="home__intro">
         <p className="page-kicker"><span>00 —</span> 张刀宋的个人档案</p>
 
@@ -638,7 +640,7 @@ function ContactView() {
   );
 }
 
-function CurrentView({ page, backPage, sharedEntering }) {
+function CurrentView({ page, backPage, sharedEntering, isHomeActive }) {
   if (page === 'works') return <WorksView sharedEntering={sharedEntering} />;
   if (page === 'work-film') return <FilmDetail backPage={backPage} sharedEntering={sharedEntering} />;
   if (page === 'work-qingping') return <SoftwareDetail backPage={backPage} sharedEntering={sharedEntering} />;
@@ -647,7 +649,7 @@ function CurrentView({ page, backPage, sharedEntering }) {
   if (page === 'slices') return <SlicesView />;
   if (page === 'about') return <AboutView />;
   if (page === 'contact') return <ContactView />;
-  return <Hero sharedEntering={sharedEntering} />;
+  return <Hero sharedEntering={sharedEntering} isHomeActive={isHomeActive} />;
 }
 
 function App() {
@@ -971,7 +973,8 @@ function App() {
               sharedEntering={pendingRef.current?.toPage === navigation.page} />
           ) : (
             <div className="archive">
-              {CHAPTERS.map(id => <CurrentView key={id} page={id} sharedEntering={pendingRef.current?.toPage === id} />)}
+              {CHAPTERS.map(id => <CurrentView key={id} page={id} sharedEntering={pendingRef.current?.toPage === id}
+                isHomeActive={page === 'top'} />)}
             </div>
           )}
         </main>

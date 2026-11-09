@@ -10,6 +10,22 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const base = new URL(process.argv[2] || 'http://127.0.0.1:4173');
 assert(['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname), 'Use a local preview URL.');
 const routes = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'slices', 'about', 'contact'];
+const weatherDates = ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12'];
+const weatherForecast = {
+  current: { temperature_2m: 18, weather_code: 0, is_day: 1 },
+  daily: {
+    time: weatherDates,
+    temperature_2m_min: [14, 12, 10, 8],
+    temperature_2m_max: [20, 18, 17, 16],
+    weather_code: [0, 3, 3, 61],
+    precipitation_probability_max: [0, 10, 20, 75],
+  },
+  hourly: {
+    time: weatherDates.flatMap(date => Array.from({ length: 24 }, (_, hour) => `${date}T${String(hour).padStart(2, '0')}:00`)),
+    temperature_2m: Array.from({ length: 96 }, (_, hour) => 12 + (hour % 9)),
+    precipitation_probability: Array.from({ length: 96 }, (_, hour) => hour >= 72 ? 75 : 0),
+  },
+};
 const browser = await chromium.launch({ headless: true, chromiumSandbox: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
 
 try {
@@ -21,6 +37,16 @@ try {
   await context.route('**/*', (route) => {
     const url = new URL(route.request().url());
     if (url.origin === base.origin) return route.continue();
+    if (url.origin === 'https://ipwho.is') {
+      assert.equal(url.searchParams.get('lang'), 'zh-CN');
+      return route.fulfill({ json: { success: true, latitude: 31.2, longitude: 121.5, city: '上海', region: '浦东新区', country: '中国' } });
+    }
+    if (url.origin + url.pathname === 'https://api.open-meteo.com/v1/forecast') {
+      assert.equal(url.searchParams.get('forecast_days'), '4');
+      assert.equal(url.searchParams.get('timezone'), 'auto');
+      assert.equal(url.searchParams.get('latitude'), '31.2');
+      return route.fulfill({ json: weatherForecast });
+    }
     // Navigation checks keep CAPTCHA offline; its submission behavior has separate tests.
     if (url.href === 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit') {
       return route.fulfill({ contentType: 'text/javascript', body: 'window.turnstile = { ready: fn => fn(), render: () => "navigation-widget", remove() {}, reset() {}, getResponse: () => "" };' });
@@ -142,6 +168,28 @@ try {
   assert.equal(await page.locator('.featured-work').getAttribute('href'), '#work-film');
   assert.equal(await page.locator('.work-card').count(), 4);
   assert.deepEqual(videoRequests, [], 'Homepage must not download the film.');
+  const weather = page.getByRole('complementary', { name: '本地天气' });
+  await weather.getByText('上海', { exact: true }).waitFor();
+  const weatherTrigger = weather.locator('summary');
+  const weatherDays = weather.getByRole('group', { name: '预报日期' });
+  assert.equal(await weatherTrigger.locator('.pixel-weather__sky').count(), 1);
+  assert.equal(await weatherTrigger.locator('strong').textContent(), '18°');
+  assert.doesNotMatch(await weatherTrigger.innerText(), /浦东|中国/);
+  assert.equal(await weatherDays.count(), 0, 'Keep the forecast collapsed on arrival.');
+  await weatherTrigger.press('Enter');
+  assert.equal(await weatherDays.getByRole('button').count(), 4);
+  assert.equal(await weatherDays.getByRole('button', { name: /^今天/ }).getAttribute('aria-pressed'), 'true');
+  const lastDay = weatherDays.getByRole('button', { name: /^大后天/ });
+  await lastDay.press('Enter');
+  assert.equal(await lastDay.getAttribute('aria-pressed'), 'true');
+  assert.match(await weather.innerText(), /最高降水概率 75%/);
+  assert.equal(await weather.locator('.pixel-weather__bars:not(.pixel-weather__bars--rain) .pixel-weather__bar').count(), 24);
+  assert.equal(await weather.locator('.pixel-weather__bars--rain .pixel-weather__bar').count(), 24);
+  assert.equal(await weather.locator('.pixel-weather__bars--rain .pixel-weather__bar').first().evaluate(bar => bar.style.getPropertyValue('--level')), '0.75');
+  assert.equal(await weatherTrigger.locator('.pixel-weather__fall').count(), 0, 'A later rainy day must not change the current sunny sprite.');
+  await lastDay.press('Escape');
+  assert.equal(await weather.locator('details').getAttribute('open'), null);
+  assert.equal(await weatherTrigger.evaluate(trigger => document.activeElement === trigger), true);
   await page.locator('.featured-work').click();
   await settled('work-film');
   await page.waitForFunction(() => !document.querySelector('body > .work-visual, .work-visual--hidden'));
@@ -240,7 +288,7 @@ try {
   await settled('top', false);
   await page.waitForURL(`${base}#top`);
   assert.equal(await page.evaluate(() => localStorage.length), 0, 'Unexpected persistent browser storage.');
-  assert.deepEqual(await page.evaluate(() => Object.keys(sessionStorage)), ['between-states.swarm.build'], 'Only the entrance sequence may use session storage.');
+  assert.deepEqual(await page.evaluate(() => Object.keys(sessionStorage).sort()), ['between-states.swarm.build', 'between-states.weather']);
   assert.deepEqual(await context.cookies(), [], 'Unexpected cookies.');
   assert.deepEqual(externalRequests, [], 'Unexpected external network requests.');
   assert.deepEqual(errors, [], 'Browser reported errors.');
