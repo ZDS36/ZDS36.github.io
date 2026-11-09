@@ -1,6 +1,6 @@
 import './paper-shred.css';
 import avatarUrl from './avatar.jpg';
-import { canSnapshotMain, intersectsViewport } from './navigation-snapshot.js';
+import { canSnapshotMain, cloneVisibleMain } from './navigation-snapshot.js';
 import { createShred } from './shred-motion.js';
 
 const directions = ['top', 'bottom', 'left', 'right'];
@@ -10,20 +10,27 @@ overlay.setAttribute('aria-hidden', 'true');
 const avatar = new Image();
 avatar.src = avatarUrl;
 let effect;
+let avatarData;
 
-function freezeImage(image) {
+async function freezeImage(image, limit) {
   if (!image.complete || !image.naturalWidth) return '';
-  const scale = Math.min(1, 1000 / Math.max(image.naturalWidth, image.naturalHeight));
+  const scale = Math.min(1, limit / Math.max(image.naturalWidth, image.naturalHeight));
   const still = document.createElement('canvas');
   still.width = Math.max(1, Math.round(image.naturalWidth * scale));
   still.height = Math.max(1, Math.round(image.naturalHeight * scale));
   still.getContext('2d').drawImage(image, 0, 0, still.width, still.height);
-  return still.toDataURL('image/webp', .9);
+  const blob = await new Promise(resolve => still.toBlob(resolve, 'image/webp', .9));
+  if (!blob) return '';
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 }
 
-function snapshotStyles(width, viewportHeight) {
+function snapshotStyles(width, viewportHeight, avatarData) {
   const avatarPath = new URL(avatarUrl, location.href).pathname;
-  const avatarData = freezeImage(avatar);
   const css = Array.from(document.styleSheets, sheet => {
     if (sheet.href && new URL(sheet.href).origin !== location.origin) return '';
     return Array.from(sheet.cssRules, rule => rule.cssText).join('\n')
@@ -38,22 +45,21 @@ function snapshotStyles(width, viewportHeight) {
 
 // shortcut: SVG captures local HTML and still images, use a native pixel capture for visible live media.
 async function snapshot(stage, main, width, height, density) {
-  const clone = stage.cloneNode(true);
-  const scroller = clone.querySelector('.site-main');
+  const clone = stage.cloneNode(false);
+  const { copy: scroller, images } = cloneVisibleMain(main);
+  const ambient = stage.querySelector('.ambient').cloneNode(true);
+  clone.append(ambient, scroller);
   const shell = stage.parentElement.cloneNode(false);
   shell.style.cssText += ';display:block;height:100%;color:var(--paper);font-size:1rem;line-height:1.65';
   shell.append(clone);
   clone.style.height = '100%';
   scroller.style.cssText = `width:${main.clientWidth}px;overflow:hidden;scrollbar-width:none;`;
   scroller.firstElementChild.style.top = `${-main.scrollTop}px`;
-  clone.querySelector('.chapter-mask')?.remove();
-
   const bounds = main.getBoundingClientRect();
-  const originals = main.querySelectorAll('img');
-  scroller.querySelectorAll('img').forEach((copy, index) => {
-    const source = originals[index];
-    const visible = intersectsViewport(source, bounds);
-    const src = visible ? freezeImage(source) : '';
+  const frozenImages = images.map(async ([source, copy]) => {
+    const rect = source.getBoundingClientRect();
+    const visible = rect.width > 0 && rect.height > 0 && rect.bottom > bounds.top && rect.top < bounds.bottom;
+    const src = visible ? await freezeImage(source, width <= 600 ? 640 : 1000) : '';
     copy.removeAttribute('loading');
     copy.removeAttribute('srcset');
     if (src) {
@@ -63,7 +69,6 @@ async function snapshot(stage, main, width, height, density) {
       copy.removeAttribute('alt');
       copy.style.visibility = 'hidden';
       if (visible) {
-        const rect = source.getBoundingClientRect();
         copy.style.width = `${rect.width}px`;
         copy.style.height = `${rect.height}px`;
       }
@@ -89,7 +94,9 @@ async function snapshot(stage, main, width, height, density) {
   foreign.setAttribute('width', width);
   foreign.setAttribute('height', height);
   const style = document.createElement('style');
-  style.textContent = snapshotStyles(width, viewportHeight);
+  if (avatar.complete && avatar.naturalWidth) avatarData ??= freezeImage(avatar, 640);
+  const [avatarImage] = await Promise.all([avatarData, ...frozenImages]);
+  style.textContent = snapshotStyles(width, viewportHeight, avatarImage);
   foreign.append(style, shell);
   svg.append(foreign);
 
@@ -111,7 +118,8 @@ export const paperShredTransition = {
   },
   start({ stage, main }, commit) {
     const { width, height } = stage.getBoundingClientRect();
-    const density = Math.min(devicePixelRatio, 1.5);
+    const density = Math.min(devicePixelRatio, width <= 600 ? 1.25 : 1.5);
+    const scrollTop = main.scrollTop;
     const direction = directions[Math.floor(Math.random() * directions.length)];
     const strips = effect.makeStrips();
     let frame;
@@ -129,7 +137,7 @@ export const paperShredTransition = {
     const deadline = setTimeout(cancel, 600);
 
     snapshot(stage, main, width, height, density).then(texture => {
-      if (stopped || effect.lost()) return cancel();
+      if (stopped || effect.lost() || Math.abs(main.scrollTop - scrollTop) > 2) return cancel();
       clearTimeout(deadline);
       overlay.width = texture.width;
       overlay.height = texture.height;
@@ -140,10 +148,14 @@ export const paperShredTransition = {
       effect.draw(direction, 0, strips);
       commit();
       const start = performance.now();
+      let lastDraw = start;
       function tick(now) {
         const elapsed = Math.max(0, now - start);
         if (elapsed >= effect.duration || effect.lost()) return cancel();
-        effect.draw(direction, elapsed / 1000, strips);
+        if (now - lastDraw >= 15) {
+          effect.draw(direction, elapsed / 1000, strips);
+          lastDraw = now;
+        }
         frame = requestAnimationFrame(tick);
       }
       frame = requestAnimationFrame(tick);

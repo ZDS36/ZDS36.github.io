@@ -82,6 +82,7 @@ export function createShred(overlay, width, height) {
     const flip = reverse ? -1 : 1;
     const reach = ease(time / feedTime);
     const front = reach * length;
+    const segments = width <= 600 ? 16 : 24;
     const vertices = [];
 
     function vertex(u, v, bentU = u, bentV = v, shade = 0, alpha = 1) {
@@ -111,8 +112,8 @@ export function createShred(overlay, width, height) {
       let previous;
 
       // The paper stays attached at the cutting line. Its free end has the most room to flex.
-      for (let segment = 0; segment <= 24; segment++) {
-        const u = front * (segment / 24);
+      for (let segment = 0; segment <= segments; segment++) {
+        const u = front * (segment / segments);
         const free = (front - u) / length;
         const slack = ease(free * 5);
         const flutter = free ** 1.23;

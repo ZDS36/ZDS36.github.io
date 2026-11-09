@@ -357,7 +357,35 @@ try {
     frame.srcdoc = '<p>Offscreen verification fixture</p>';
     document.querySelector('[data-view="contact"]').append(frame);
   });
-  await page.locator('.site-header a[href="#about"]').click();
+  const handoff = await page.evaluate(() => {
+    const outgoing = document.querySelector('#main-content .slices-page > :first-child');
+    const position = { transform: 'translateY(19px)' };
+    const motion = outgoing.animate([position, position], 1000);
+    const mask = document.querySelector('.ink-stage > .chapter-mask');
+    const appearance = { backdropFilter: 'blur(7px)', opacity: .7 };
+    const blur = mask.animate([appearance, appearance], 1000);
+    for (const animation of [motion, blur]) {
+      animation.pause();
+      animation.currentTime = 0;
+    }
+    const measure = (node, veil) => ({
+      top: node.getBoundingClientRect().top,
+      transform: getComputedStyle(node).transform,
+      blur: getComputedStyle(veil).backdropFilter,
+      opacity: getComputedStyle(veil).opacity,
+    });
+    const before = measure(outgoing, mask);
+    document.querySelector('.site-header a[href="#about"]').click();
+    const sheet = document.querySelector('.paper-sheet');
+    const first = measure(sheet.querySelector('.slices-page > :first-child'), sheet.querySelector('.chapter-mask'));
+    motion.cancel();
+    blur.cancel();
+    return { before, first, clip: getComputedStyle(sheet).clipPath };
+  });
+  assert.equal(handoff.before.transform, 'matrix(1, 0, 0, 1, 0, 19)');
+  assert.equal(handoff.before.blur, 'blur(7px)');
+  assert.deepEqual(handoff.first, handoff.before, 'The outgoing page must keep its appearance on the first tear frame.');
+  assert.equal(handoff.clip, 'none', 'The first frame must be an intact sheet.');
   await settled('about');
   await page.waitForFunction(() => {
     const overlay = document.querySelector('.paper-tear');
