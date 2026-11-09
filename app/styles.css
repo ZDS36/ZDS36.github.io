@@ -473,14 +473,14 @@ h1:focus, .site-main:focus { outline: none; }
   .about-facts div { grid-template-columns: 4rem 1fr; gap: .6rem; }
 }
 @media (max-width: 600px) {
-  :root { --header-content-height: 7rem; --page-pad: 1.25rem; }
+  :root { --header-content-height: 96px; --page-pad: 1.25rem; }
   .view { --paper-shift: 18px; }
   .contact-page.is-arriving:not(.view--shared-enter) .contact-panel { --paper-rise: 24px; }
-  .site-header { grid-template-columns: 1fr auto; grid-template-rows: repeat(2, calc(var(--header-content-height) / 2)); gap: 0; align-content: start; }
+  .site-header { grid-template-columns: 1fr auto; grid-template-rows: repeat(2, minmax(44px, 1fr)); gap: 0; }
   .brand { align-self: center; }
   .brand__name { font-size: 1.5rem; }
   .brand__meta { display: block; font-size: .55rem; max-width: 5.5rem; }
-  .primary-nav { grid-row: 2; grid-column: 1 / -1; align-self: center; }
+  .primary-nav { grid-row: 2; grid-column: 1 / -1; align-self: center; padding-block: 0; }
   .primary-nav a { min-width: 0; flex: 1; min-height: 44px; padding: .4rem .5rem; font-size: .8rem; }
   .header-actions { grid-row: 1; grid-column: 2; }
   .contact-button { font-size: .73rem; }

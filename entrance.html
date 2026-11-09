@@ -391,6 +391,7 @@ h1 {
   const panel = $('#code-panel')
   const codeLines = [...panel.querySelectorAll('code')]
   const reduced = matchMedia('(prefers-reduced-motion: reduce)')
+  const compact = matchMedia('(max-width: 600px)').matches
   const pieces = [...document.querySelectorAll('.piece')]
   const ink = [...document.querySelectorAll('.ink')]
   const ticks = [...document.querySelectorAll('#ticks path')]
@@ -413,7 +414,7 @@ h1 {
   const ease = p => p * p * (3 - 2 * p)
   const arrival = 425
   const hop = 135
-  const samples = 160
+  const samples = compact ? 48 : 160
   const paths = new Map(ink.filter(path => !ticks.includes(path)).map(path => {
     const length = path.getTotalLength()
     return [path, Array.from({length: samples + 1}, (_, i) => path.getPointAtLength(length * i / samples))]
@@ -909,6 +910,7 @@ h1 {
     }
     entry.classList.toggle('finished', assembled)
     entry.inert = false
+    window.frameElement?.dispatchEvent(new Event('entrance:assembled'))
     status.textContent = reduced.matches ? '准备就绪' : '组装完成'
     deposit(1)
     drawDust(performance.now())

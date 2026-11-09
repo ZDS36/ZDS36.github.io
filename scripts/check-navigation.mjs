@@ -33,6 +33,7 @@ try {
   const errors = [];
   const externalRequests = [];
   const videoRequests = [];
+  const forecastCoordinates = [];
   context.on('request', request => { if (new URL(request.url()).pathname.endsWith('.mp4')) videoRequests.push(request.url()); });
   await context.route('**/*', (route) => {
     const url = new URL(route.request().url());
@@ -44,8 +45,15 @@ try {
     if (url.origin + url.pathname === 'https://api.open-meteo.com/v1/forecast') {
       assert.equal(url.searchParams.get('forecast_days'), '4');
       assert.equal(url.searchParams.get('timezone'), 'auto');
-      assert.equal(url.searchParams.get('latitude'), '31.2');
+      forecastCoordinates.push([url.searchParams.get('latitude'), url.searchParams.get('longitude')]);
       return route.fulfill({ json: weatherForecast });
+    }
+    if (url.origin + url.pathname === 'https://geocoding-api.open-meteo.com/v1/search') {
+      const name = url.searchParams.get('name');
+      assert(['湛江', '湛江市'].includes(name));
+      return route.fulfill({ json: name === '湛江' ? {} : {
+        results: [{ id: 1784990, name: '湛江市', admin1: '广东', latitude: 21.23391, longitude: 110.38749 }],
+      } });
     }
     // Navigation checks keep CAPTCHA offline; its submission behavior has separate tests.
     if (url.href === 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit') {
@@ -170,7 +178,9 @@ try {
   assert.deepEqual(videoRequests, [], 'Homepage must not download the film.');
   const weather = page.getByRole('complementary', { name: '本地天气' });
   await weather.getByText('上海', { exact: true }).waitFor();
+  assert.deepEqual(forecastCoordinates.at(-1), ['31.2', '121.5']);
   const weatherTrigger = weather.locator('summary');
+  await weatherTrigger.getByText('估算', { exact: true }).waitFor();
   const weatherDays = weather.getByRole('group', { name: '预报日期' });
   assert.equal(await weatherTrigger.locator('.pixel-weather__sky').count(), 1);
   assert.equal(await weatherTrigger.locator('strong').textContent(), '18°');
@@ -252,7 +262,7 @@ try {
   await settled('works');
   assert(Math.abs(await page.locator('#main-content').evaluate((main) => main.scrollTop) - savedScroll) < 2, 'Return to works must restore scroll.');
 
-  for (const [width, height] of [[360, 800], [390, 844], [768, 1024], [844, 390], [1366, 768], [1920, 1080]]) {
+  for (const [width, height] of [[320, 740], [360, 800], [390, 844], [768, 1024], [844, 390], [1366, 768], [1920, 1080]]) {
     await page.setViewportSize({ width, height });
     for (const route of routes) {
       await navigate(route);
@@ -289,6 +299,43 @@ try {
   await page.waitForURL(`${base}#top`);
   assert.equal(await page.evaluate(() => localStorage.length), 0, 'Unexpected persistent browser storage.');
   assert.deepEqual(await page.evaluate(() => Object.keys(sessionStorage).sort()), ['between-states.swarm.build', 'between-states.weather']);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto(`${base}?mobile-check`, { waitUntil: 'commit' });
+  const mobileEntrance = page.frameLocator('#site-entrance');
+  await mobileEntrance.locator('#entry.building').waitFor();
+  assert.equal(await page.locator('.site-header').count(), 0, 'Mount the mobile homepage after the entrance assembles.');
+  await mobileEntrance.getByRole('link', { name: '进入网站', exact: false }).click();
+  await page.locator('#site-entrance').waitFor({ state: 'detached' });
+  await settled('top', false);
+  const header = page.locator('.site-header');
+  assert.equal((await header.boundingBox()).height, 96);
+  for (const control of await header.locator('a, button').all()) {
+    assert((await control.boundingBox()).height >= 44, 'Keep mobile navigation targets at least 44px tall.');
+  }
+
+  await weatherTrigger.click();
+  await weather.getByRole('searchbox', { name: '城市名称' }).fill('湛江');
+  await weather.getByRole('button', { name: '搜索', exact: true }).click();
+  await weather.getByRole('button', { name: '湛江市 · 广东' }).click();
+  await weatherTrigger.getByText('湛江市', { exact: true }).waitFor();
+  await weather.getByText('手动选择', { exact: true }).waitFor();
+  assert.equal(await weatherTrigger.getByText('估算', { exact: true }).count(), 0);
+  assert.deepEqual(forecastCoordinates.at(-1), ['21.23391', '110.38749']);
+  await page.reload();
+  await weatherTrigger.getByText('湛江市', { exact: true }).waitFor();
+  await weatherTrigger.click();
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 21.23391, longitude: 110.38749 });
+  await weather.getByRole('button', { name: '使用设备定位' }).click();
+  await weatherTrigger.getByText('当前位置', { exact: true }).waitFor();
+  assert.deepEqual(forecastCoordinates.at(-1), ['21.2', '110.4']);
+  assert.equal(await page.evaluate(() => sessionStorage.getItem('between-states.weather-city')), null);
+  await weather.getByRole('button', { name: '恢复 IP 估算' }).click();
+  await weatherTrigger.getByText('上海', { exact: true }).waitFor();
+  await weatherTrigger.click();
+  console.log('Passed: compact mobile header, deferred entrance mount, manual city search and device/IP weather switching.');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   assert.deepEqual(await context.cookies(), [], 'Unexpected cookies.');
   assert.deepEqual(externalRequests, [], 'Unexpected external network requests.');
   assert.deepEqual(errors, [], 'Browser reported errors.');

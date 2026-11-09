@@ -985,8 +985,16 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+const root = document.getElementById('root');
+function mountSite() {
+  createRoot(root).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+}
+if (root.hasAttribute('data-defer-home')) {
+  root.addEventListener('entrance:resume-home', mountSite, { once: true });
+} else {
+  mountSite();
+}

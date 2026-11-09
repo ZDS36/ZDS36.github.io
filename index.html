@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#151913" />
     <meta name="color-scheme" content="dark light" />
     <style>#root[data-entrance] :is(.brand,.primary-nav a,.primary-nav__indicator,.header-actions,.home__intro>*,.home>.pixel-weather,.home>.featured-work,.home>.home__foot){opacity:0}</style>
@@ -39,6 +39,14 @@
         frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:1000;background:#0c1113;color-scheme:dark';
         root.inert = true;
         root.dataset.entrance = '';
+        if (!motion.matches && matchMedia('(max-width: 600px)').matches) root.dataset.deferHome = '';
+
+        function resumeHome() {
+          if (!root.hasAttribute('data-defer-home')) return;
+          delete root.dataset.deferHome;
+          root.dispatchEvent(new Event('entrance:resume-home'));
+        }
+        frame.addEventListener('entrance:assembled', resumeHome, {once: true});
 
         const ready = new MutationObserver(async () => {
           const home = root.querySelector('.home');
@@ -59,6 +67,7 @@
         function enter(animate) {
           ready.disconnect();
           if (!location.hash) history.replaceState(null, '', '#top');
+          resumeHome();
           const animations = [];
           if (animate && !motion.matches && location.hash === '#top' && typeof root.animate === 'function') {
             const options = {duration: 480, fill: 'backwards', easing: 'cubic-bezier(.22,.65,.26,1)'};
@@ -103,7 +112,7 @@
             location.reload();
           }
         }, {once: true});
-        frame.src = '/entrance.html?handoff=1';
+        frame.src = '/entrance.html?handoff=1&v=2';
         document.body.append(frame);
       })();
     </script>

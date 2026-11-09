@@ -60,7 +60,7 @@ if (entrance !== await read('.site-build/entrance.html')) {
   throw new Error('Production entrance differs from source.');
 }
 requireMarker(entrance, 'href="/#top"', 'Entrance link to the main site');
-requireMarker(builtHtml, "frame.src = '/entrance.html?handoff=1'", 'Production entrance overlay');
+requireMarker(builtHtml, "frame.src = '/entrance.html?handoff=1&v=2'", 'Production entrance overlay');
 requireMarker(builtHtml, '#root[data-entrance]', 'Entrance visibility rule in the HTML, independent of cached CSS');
 
 const assetDirectory = path.join(buildRoot, 'assets');

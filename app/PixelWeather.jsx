@@ -4,11 +4,13 @@ import './pixel-weather.css';
 const DAYS = ['今天', '明天', '后天', '大后天'];
 const DAY_FIELDS = 'weather_code,temperature_2m_min,temperature_2m_max,precipitation_probability_max';
 const CACHE_KEY = 'between-states.weather';
+const CITY_KEY = 'between-states.weather-city';
 const CACHE_TTL = 30 * 60 * 1000;
 
 async function getJson(url, signal) {
+  const timeout = AbortSignal.timeout(8000);
   const response = await fetch(url, {
-    signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]),
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     credentials: 'omit',
     referrerPolicy: 'no-referrer',
   });
@@ -21,27 +23,91 @@ async function locate(useDevice, signal) {
     const { coords } = await new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, maximumAge: 600000 });
     });
-    return { latitude: coords.latitude.toFixed(1), longitude: coords.longitude.toFixed(1), city: '' };
+    return { latitude: coords.latitude.toFixed(1), longitude: coords.longitude.toFixed(1), city: '当前位置' };
   }
 
   try {
     const data = await getJson('https://ipwho.is/?lang=zh-CN&fields=success,city,latitude,longitude', signal);
-    const location = data?.success === true && ipLocation(data);
+    const location = data?.success === true && parseLocation(data);
     if (location) return location;
   } catch (error) {
     if (signal.aborted) throw error;
   }
-  const location = ipLocation(await getJson('https://get.geojs.io/v1/ip/geo.json', signal));
+  const location = parseLocation(await getJson('https://get.geojs.io/v1/ip/geo.json', signal));
   if (!location) throw new Error('Location unavailable');
   return location;
 }
 
-function ipLocation(data) {
+function parseLocation(data, name = data?.city) {
   const coordinate = (value, limit) => ['string', 'number'].includes(typeof value) && String(value).trim()
     && Math.abs(Number(value)) <= limit;
   if (!coordinate(data?.latitude, 90) || !coordinate(data.longitude, 180)) return null;
-  const city = typeof data.city === 'string' ? data.city.trim() : '';
+  const city = typeof name === 'string' ? name.trim() : '';
   return { latitude: Number(data.latitude), longitude: Number(data.longitude), city };
+}
+
+function readCity() {
+  try {
+    const location = parseLocation(JSON.parse(sessionStorage.getItem(CITY_KEY)));
+    if (location?.city) return location;
+  } catch { /* Storage is optional. */ }
+  return null;
+}
+
+function CitySearch({ onSelect }) {
+  const [matches, setMatches] = useState([]);
+  const [status, setStatus] = useState('');
+  const [searching, setSearching] = useState(false);
+
+  async function search(event) {
+    event.preventDefault();
+    const name = new FormData(event.currentTarget).get('city').trim();
+    if (name.length < 2) return setStatus('请输入至少两个字的地名');
+    setSearching(true);
+    setMatches([]);
+    setStatus('正在搜索…');
+    try {
+      const query = new URLSearchParams({ name, language: 'zh', count: '5' });
+      const url = 'https://geocoding-api.open-meteo.com/v1/search?';
+      let data = await getJson(url + query);
+      if (!data.results?.length && /^\p{Script=Han}+$/u.test(name) && !name.endsWith('市')) {
+        query.set('name', name + '市');
+        data = await getJson(url + query);
+      }
+      const places = Array.isArray(data.results) ? data.results.flatMap(place => {
+        const location = parseLocation(place, place?.name);
+        const region = [place?.admin1, place?.country].find(value => typeof value === 'string' && value);
+        return location?.city ? [{ id: place.id, location, region }] : [];
+      }) : [];
+      setMatches(places);
+      setStatus(places.length ? '' : '没找到这个城市，试试完整地名');
+    } catch {
+      setStatus('城市搜索暂不可用');
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  return (
+    <>
+      <form className="pixel-weather__search" onSubmit={search}>
+        <input type="search" name="city" aria-label="城市名称" placeholder="输入城市" required minLength={2} maxLength={48} />
+        <button type="submit" disabled={searching}>搜索</button>
+      </form>
+      <div role="status">{status}</div>
+      {matches.length > 0 && (
+        <div className="pixel-weather__retry">
+          {matches.map(({ id, location, region }) => (
+            <button key={id} type="button" onClick={event => {
+              event.currentTarget.closest('details').querySelector('summary').focus();
+              setMatches([]);
+              onSelect(location);
+            }}>{location.city}{region ? ` · ${region}` : ''}</button>
+          ))}
+        </div>
+      )}
+    </>
+  );
 }
 
 function conditionName(code) {
@@ -143,7 +209,7 @@ const degrees = value => Number.isFinite(value) ? `${Math.round(value)}°` : '�
 
 export default function PixelWeather({ active }) {
   const [day, setDay] = useState(0);
-  const [lookup, setLookup] = useState({ useDevice: false, skipCache: false });
+  const [lookup, setLookup] = useState(() => ({ useDevice: false, skipCache: false, city: readCity() }));
   const [result, setResult] = useState(null);
   const latest = useRef(null);
 
@@ -151,11 +217,12 @@ export default function PixelWeather({ active }) {
     if (!active) return;
     const controller = new AbortController();
     const { signal } = controller;
-    let location;
+    const usingIp = !lookup.useDevice && !lookup.city;
+    let location = lookup.city;
     let loading = false;
     async function load() {
       if (document.hidden || loading) return;
-      const cached = latest.current ?? (!lookup.useDevice && !lookup.skipCache ? readCache() : null);
+      const cached = latest.current ?? (usingIp && !lookup.skipCache ? readCache() : null);
       const age = Date.now() - cached?.at;
       if (age >= 0 && age < CACHE_TTL) {
         latest.current = cached;
@@ -165,7 +232,7 @@ export default function PixelWeather({ active }) {
       loading = true;
       try {
         // Keep an approved device location in memory only.
-        if (!lookup.useDevice || !location) location = await locate(lookup.useDevice, signal);
+        if (usingIp || !location) location = await locate(lookup.useDevice, signal);
         if (signal.aborted) return;
         const query = new URLSearchParams({
           latitude: location.latitude,
@@ -183,11 +250,14 @@ export default function PixelWeather({ active }) {
           city: location.city, at: Date.now() };
         latest.current = fresh;
         setResult(fresh);
-        if (!lookup.useDevice) {
+        if (usingIp) {
           try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(fresh)); } catch { /* Storage is optional. */ }
         }
       } catch {
-        if (!signal.aborted) setResult({ error: location ? '预报暂时取不到' : '暂时无法判断你的地区', located: Boolean(location), city: location?.city });
+        if (!signal.aborted) setResult({
+          error: location ? '预报暂时取不到' : lookup.useDevice ? '设备定位不可用，可搜索城市' : '暂时无法判断你的地区',
+          city: location?.city,
+        });
       } finally {
         loading = false;
       }
@@ -202,13 +272,18 @@ export default function PixelWeather({ active }) {
     };
   }, [active, lookup]);
 
-  function retry(useDevice) {
+  function changeLocation(useDevice, city = null) {
+    try {
+      if (city) sessionStorage.setItem(CITY_KEY, JSON.stringify(city));
+      else sessionStorage.removeItem(CITY_KEY);
+    } catch { /* Storage is optional. */ }
     latest.current = null;
     setResult(null);
-    setLookup({ useDevice, skipCache: true });
+    setDay(0);
+    setLookup({ useDevice, skipCache: true, city });
   }
 
-  const { forecast, city, located, error } = result ?? {};
+  const { forecast, city, error } = result ?? {};
   const { current, daily, hourly } = forecast ?? {};
   const condition = conditionName(current?.weather_code);
   const probability = daily?.precipitation_probability_max?.[day];
@@ -222,6 +297,7 @@ export default function PixelWeather({ active }) {
       }}>
         <summary className="pixel-weather__trigger">
           <span className="pixel-weather__city" title={city || undefined}>{city || '本地天气'}</span>
+          {city && !lookup.city && !lookup.useDevice && <small className="pixel-weather__source">估算</small>}
           <span className="pixel-weather__now" aria-live="polite">
             {current ? (
               <>
@@ -251,22 +327,19 @@ export default function PixelWeather({ active }) {
               </div>
               <HourlyBars hourly={hourly} date={daily.time[day]} />
               <div className="pixel-weather__foot">
-                <span>{lookup.useDevice ? '设备定位' : 'IP 估算'}</span>
+                <span>{lookup.city ? '手动选择' : lookup.useDevice ? '设备定位' : 'IP 估算'}</span>
                 <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo ↗</a>
               </div>
             </>
-          ) : (
-            <>
-              <p className="pixel-weather__status" role="status">{error ?? '正在读取当地预报…'}</p>
-              {error && (
-                <div className="pixel-weather__retry">
-                  <button type="button" onClick={() => retry(lookup.useDevice)}>重试</button>
-                  {!located && !lookup.useDevice && navigator.geolocation
-                    && <button type="button" onClick={() => retry(true)}>使用设备定位</button>}
-                </div>
-              )}
-            </>
-          )}
+          ) : <p className="pixel-weather__status" role="status">{error ?? '正在读取当地预报…'}</p>}
+          <div className="pixel-weather__retry">
+            {error && <button type="button" onClick={() => changeLocation(lookup.useDevice, lookup.city)}>重试</button>}
+            {!lookup.useDevice && navigator.geolocation
+              && <button type="button" onClick={() => changeLocation(true)}>使用设备定位</button>}
+            {(lookup.city || lookup.useDevice)
+              && <button type="button" onClick={() => changeLocation(false)}>恢复 IP 估算</button>}
+          </div>
+          <CitySearch onSelect={city => changeLocation(false, city)} />
         </div>
       </details>
     </aside>
