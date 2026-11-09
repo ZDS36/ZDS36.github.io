@@ -13,8 +13,9 @@ if (document.documentElement.startViewTransition && supportsMask) {
 }
 
 export const inkTransition = {
+  sound: 'ink',
   supports: ({ stage }) => ready && supportsMask && typeof stage.startViewTransition === 'function',
-  start({ stage, main, link }, commit) {
+  start({ stage, main, link, playSound }, commit) {
     const rect = main.getBoundingClientRect();
     const anchor = link.getBoundingClientRect();
     const x = anchor.left + anchor.width / 2 - rect.left;
@@ -39,7 +40,7 @@ export const inkTransition = {
       cancel();
       throw error;
     }
-    transition.ready.catch(() => {});
+    transition.ready.then(playSound, () => {});
     return { finished: transition.finished, cancel };
   }
 };

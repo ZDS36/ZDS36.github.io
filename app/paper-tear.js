@@ -125,12 +125,14 @@ function playPaperTear(stage, main) {
 }
 
 export const paperTearTransition = {
+  sound: 'tear',
   // shortcut: the paper copies are DOM clones, use a pixel snapshot to animate live media.
   supports: ({ main }) => CSS.supports('clip-path', 'polygon(0% 0%, 100% 0%, 100% 100%)')
     && canSnapshotMain(main),
-  start({ stage, main }, commit) {
+  start({ stage, main, playSound }, commit) {
     const transition = playPaperTear(stage, main);
     commit();
+    playSound();
     return transition;
   }
 };

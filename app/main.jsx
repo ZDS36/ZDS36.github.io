@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { pickNavigationTransition } from './navigation-transitions.js';
+import { playNavigationSound, unlockNavigationAudio } from './navigation-audio.js';
 import avatarUrl from './avatar.jpg';
 import { MOMENTS } from './moments.js';
 import { groupMoments } from './timeline.js';
@@ -17,11 +18,13 @@ const PAGE_IDS = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'wo
 const CHAPTERS = ['top', 'works', 'slices', 'about', 'contact'];
 
 const NAV_ITEMS = [
-  { id: 'top', label: '首页' },
-  { id: 'works', label: '作品' },
-  { id: 'slices', label: '年轮' },
-  { id: 'about', label: '关于' }
+  { id: 'top', label: '首页', icon: 'M2 7.5 8 2l6 5.5M3.5 6.5V14h9V6.5M6.5 14v-4h3v4' },
+  { id: 'works', label: '作品', icon: 'M2 4h12v9H2zM5.5 4V2.5h5V4M2 8h12M7 8v1h2V8' },
+  { id: 'slices', label: '年轮', icon: 'M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z' },
+  { id: 'about', label: '关于', icon: 'M8 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM3 14v-1a5 4 0 0 1 10 0v1' }
 ];
+
+const chapterFor = (page) => page.startsWith('work-') ? 'works' : page;
 
 const WORKS = [
   {
@@ -184,12 +187,24 @@ function ThemeToggle() {
 }
 
 function SiteHeader({ page }) {
-  const activePage = page.startsWith('work-') ? 'works' : page;
-  const trackIndicatorMotion = (event) => {
-    if (event.nativeEvent.propertyName === 'transform') {
-      event.currentTarget.classList.toggle('is-moving', event.nativeEvent.type === 'transitionrun');
+  const activePage = chapterFor(page);
+  const activeIndex = NAV_ITEMS.findIndex(item => item.id === activePage);
+  const indicatorRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const indicator = indicatorRef.current;
+    const previous = indicator.style.getPropertyValue('--nav-left');
+    if (activeIndex < 0 && previous) return;
+    const index = activeIndex < 0 ? NAV_ITEMS.length - 1 : activeIndex;
+    if (previous && Number(previous) !== index) {
+      // An interrupted capsule can still be on either side of the new target.
+      const style = getComputedStyle(indicator);
+      const center = (Number(style.getPropertyValue('--nav-left')) + Number(style.getPropertyValue('--nav-right'))) / 2;
+      indicator.parentElement.dataset.direction = index < center ? 'left' : 'right';
     }
-  };
+    indicator.style.setProperty('--nav-left', index);
+    indicator.style.setProperty('--nav-right', index);
+  }, [activeIndex]);
 
   return (
     <header className="site-header">
@@ -206,13 +221,11 @@ function SiteHeader({ page }) {
             href={`#${item.id}`}
             aria-current={activePage === item.id ? 'page' : undefined}
           >
+            <svg className="primary-nav__icon" viewBox="0 0 16 16" aria-hidden="true"><path d={item.icon} /></svg>
             {item.label}
           </a>
         ))}
-        <span className="primary-nav__indicator" aria-hidden="true"
-          onTransitionRun={trackIndicatorMotion}
-          onTransitionEnd={trackIndicatorMotion}
-          onTransitionCancel={trackIndicatorMotion} />
+        <span ref={indicatorRef} className="primary-nav__indicator" aria-hidden="true" />
       </nav>
 
       <div className="header-actions">
@@ -659,13 +672,20 @@ function App() {
     let activeNavigation = null;
     let queuedNav = null;
     history.scrollRestoration = 'manual';
+    const cancelNavigationPlayback = (active = activeNavigation) => {
+      if (!active || active.canceled) return;
+      active.canceled = true;
+      active.stopSound?.();
+      active.effect?.cancel();
+    };
     const stopNavigationTransition = () => {
       const active = activeNavigation;
       activeNavigation = null;
       queuedNav = null;
-      active?.effect?.cancel();
+      cancelNavigationPlayback(active);
     };
     const clearTransition = () => {
+      main.querySelector('.is-tab-arriving')?.classList.remove('is-tab-arriving');
       maskAnimation.current?.cancel();
       maskAnimation.current = null;
       if (pendingRef.current) {
@@ -679,7 +699,7 @@ function App() {
       active.target.classList.remove('work-visual--hidden');
       active.overlay.remove();
     };
-    const syncPage = (animate = !reducedMotion.matches) => {
+    const syncPage = (animate = !reducedMotion.matches, direction = 0) => {
       main.querySelector('dialog[open]')?.close();
       const nextPage = pageFromHash();
       if (window.location.hash !== `#${nextPage}`) history.replaceState(null, '', `#${nextPage}`);
@@ -710,11 +730,11 @@ function App() {
       }
       pageRef.current = nextPage;
       setPage(nextPage);
-      setNavigation({ page: nextPage, focus: true, animate, restore: returning ? originRef.current.scroll : null });
+      setNavigation({ page: nextPage, focus: true, animate, direction, restore: returning ? originRef.current.scroll : null });
     };
-    const navigate = (nextPage, animate) => {
+    const navigate = (nextPage, animate, direction) => {
       if (location.hash !== `#${nextPage}`) history.pushState(null, '', `#${nextPage}`);
-      syncPage(animate);
+      syncPage(animate, direction);
     };
     const openWithTransition = (nextPage, link) => {
       if (activeNavigation) {
@@ -724,18 +744,26 @@ function App() {
       const context = { stage, main, link };
       const canAnimate = pageRef.current !== nextPage && !reducedMotion.matches && !document.hidden
         && !root.classList.contains('theme-reveal');
+      const direction = canAnimate && link.closest('.primary-nav')
+        ? Math.sign(CHAPTERS.indexOf(nextPage) - CHAPTERS.indexOf(chapterFor(pageRef.current)))
+        : 0;
       const effect = canAnimate ? pickNavigationTransition(context) : null;
       if (!effect) {
-        navigate(nextPage, false);
+        navigate(nextPage, false, direction);
         return;
       }
 
-      const active = { effect: null, committed: false };
+      const active = { effect: null, committed: false, canceled: false, stopSound: null };
       activeNavigation = active;
+      context.playSound = () => {
+        if (activeNavigation !== active || active.canceled || active.stopSound
+          || document.hidden || reducedMotion.matches || !effect.sound) return;
+        active.stopSound = playNavigationSound(effect.sound);
+      };
       const commit = () => {
         if (activeNavigation !== active || active.committed) return;
         active.committed = true;
-        flushSync(() => navigate(nextPage, false));
+        flushSync(() => navigate(nextPage, false, active.canceled ? 0 : direction));
       };
       const finish = () => {
         if (activeNavigation !== active) return;
@@ -752,13 +780,14 @@ function App() {
       }
     };
     const onClick = (event) => {
-      if (event.target.closest('.theme-toggle')) activeNavigation?.effect?.cancel();
+      if (event.target.closest('.theme-toggle')) cancelNavigationPlayback();
       const link = event.target.closest('a[href^="#"]');
       if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const nextPage = link.getAttribute('href').slice(1);
       if (!PAGE_IDS.includes(nextPage)) return;
       event.preventDefault();
       if (link.closest('.site-header')) {
+        if (event.isTrusted && pageRef.current !== nextPage && !reducedMotion.matches) unlockNavigationAudio();
         openWithTransition(nextPage, link);
       } else {
         stopNavigationTransition();
@@ -767,18 +796,18 @@ function App() {
     };
     const onHashChange = () => { stopNavigationTransition(); syncPage(); };
     const onResize = () => {
-      activeNavigation?.effect?.cancel();
+      cancelNavigationPlayback();
       clearTransition();
     };
     const onVisibilityChange = () => {
       if (document.hidden) {
-        activeNavigation?.effect?.cancel();
+        cancelNavigationPlayback();
         clearTransition();
       }
     };
     const onMotionChange = () => {
       if (reducedMotion.matches) {
-        activeNavigation?.effect?.cancel();
+        cancelNavigationPlayback();
         clearTransition();
       }
     };
@@ -821,6 +850,10 @@ function App() {
     main.scrollTop = navigation.restore ?? section.offsetTop;
     main.scrollLeft = 0;
     if (navigation.focus) section.querySelector('h1')?.focus({ preventScroll: true });
+    if (navigation.direction) {
+      section.style.setProperty('--tab-shift', `${navigation.direction * 18}px`);
+      section.classList.add('is-tab-arriving');
+    }
     // Replay the existing paper arrival only for explicitly selected chapters.
     section.classList.remove('is-arriving');
     if (navigation.animate) {

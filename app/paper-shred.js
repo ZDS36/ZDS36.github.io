@@ -111,12 +111,13 @@ async function snapshot(stage, main, width, height, density) {
 }
 
 export const paperShredTransition = {
+  sound: 'shred',
   supports({ main }) {
     if (!canSnapshotMain(main)) return false;
     if (effect === undefined) effect = createShred(overlay);
     return effect && !effect.lost();
   },
-  start({ stage, main }, commit) {
+  start({ stage, main, playSound }, commit) {
     const { width, height } = stage.getBoundingClientRect();
     const density = Math.min(devicePixelRatio, width <= 600 ? 1.25 : 1.5);
     const scrollTop = main.scrollTop;
@@ -147,6 +148,7 @@ export const paperShredTransition = {
       stage.append(overlay);
       effect.draw(direction, 0, strips);
       commit();
+      playSound();
       const start = performance.now();
       let lastDraw = start;
       function tick(now) {

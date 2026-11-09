@@ -34,6 +34,14 @@ try {
   page.on('download', () => errors.push('Unexpected download'));
   page.on('popup', () => errors.push('Unexpected popup'));
   await page.addInitScript(() => {
+    window.transitionSoundStarts = 0;
+    for (const nodeType of [AudioBufferSourceNode, OscillatorNode]) {
+      const start = nodeType.prototype.start;
+      nodeType.prototype.start = function (...args) {
+        window.transitionSoundStarts++;
+        return start.apply(this, args);
+      };
+    }
     window.navigationFrames = { checked: 0, failures: [] };
     const checkFrame = () => {
       const view = document.querySelector('[data-view]');
@@ -87,6 +95,10 @@ try {
   const frames = () => page.evaluate(() => new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(resolve));
   }));
+  const soundStarts = () => page.evaluate(() => window.transitionSoundStarts);
+  const heardVoices = (before, count) => page.waitForFunction(
+    expected => window.transitionSoundStarts === expected, before + count
+  );
   const checkFrames = async () => {
     const result = await page.evaluate(() => window.navigationFrames);
     assert(result.checked > 0, 'No rendered frames sampled.');
@@ -327,8 +339,10 @@ try {
   }
   // Ink only covers the content, and rapid navigation keeps the latest destination.
   await page.waitForFunction(() => !document.querySelector('.ink-nav'));
+  const beforeInkSound = await soundStarts();
   await page.locator('.site-header a[href="#works"]').click();
   await page.waitForFunction(() => document.getAnimations().some(a => a.animationName === 'ink-dissolve'));
+  await heardVoices(beforeInkSound, 4);
   await page.waitForFunction(() => document.querySelector('.reading-progress').getAnimations().some(a => a.transitionProperty === 'transform'));
   const inkMotion = await page.evaluate(() => {
     const stage = document.querySelector('.ink-stage');
@@ -357,6 +371,7 @@ try {
     frame.srcdoc = '<p>Offscreen verification fixture</p>';
     document.querySelector('[data-view="contact"]').append(frame);
   });
+  const beforeTearSound = await soundStarts();
   const handoff = await page.evaluate(() => {
     const outgoing = document.querySelector('#main-content .slices-page > :first-child');
     const position = { transform: 'translateY(19px)' };
@@ -386,6 +401,7 @@ try {
   assert.equal(handoff.before.blur, 'blur(7px)');
   assert.deepEqual(handoff.first, handoff.before, 'The outgoing page must keep its appearance on the first tear frame.');
   assert.equal(handoff.clip, 'none', 'The first frame must be an intact sheet.');
+  await heardVoices(beforeTearSound, 6);
   await settled('about');
   await page.waitForFunction(() => {
     const overlay = document.querySelector('.paper-tear');
@@ -401,6 +417,7 @@ try {
   await settled('top');
   await page.waitForFunction(() => !document.querySelector('.paper-tear'));
   await page.evaluate(() => { Math.random = () => .99; });
+  const beforeShredSound = await soundStarts();
   await page.locator('.site-header a[href="#works"]').click();
   await settled('works');
   await page.waitForFunction(() => {
@@ -408,6 +425,7 @@ try {
     return layer?.dataset.direction === 'right' && layer.width > 0
       && !document.querySelector('.ink-nav, .paper-tear');
   });
+  await heardVoices(beforeShredSound, 18);
   await page.waitForFunction(() => !document.querySelector('.paper-shred-layer'));
   await page.evaluate(() => {
     document.getElementById('offscreen-challenge').remove();
@@ -430,27 +448,57 @@ try {
   assert.deepEqual(await page.evaluate(() => document.getAnimations().filter(a => a.playState === 'running').map(a => a.animationName || 'WAAPI')), []);
   assert.deepEqual(errors, [], 'Scroll navigation reported errors.');
   assert.deepEqual(externalRequests, [], 'Unexpected external requests.');
-  // The glass indicator stays mounted and interpolates instead of jumping between links.
+  // Scrub the capsule and its companion motions in both directions during a cinematic transition.
   await navigate('top');
+  await page.waitForFunction(() => !document.querySelector('.ink-nav, .paper-tear, .paper-shred-layer'));
   await page.evaluate(() => { window.glassIndicator = document.querySelector('.primary-nav__indicator'); });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  const travel = await page.evaluate(async () => {
-    const indicator = document.querySelector('.primary-nav__indicator');
-    const start = indicator.getBoundingClientRect().left;
-    const end = document.querySelector('.primary-nav a[href="#about"]').getBoundingClientRect().left;
-    document.querySelector('.primary-nav a[href="#about"]').click();
-    for (let frame = 0; frame < 24; frame++) {
+  await page.waitForFunction(() => !document.querySelector('.primary-nav__indicator').getAnimations().length);
+  await page.evaluate(() => { Math.random = () => .5; });
+  for (const [route, direction] of [['about', 1], ['top', -1]]) {
+    const motion = await page.evaluate(async route => {
+      const lens = window.glassIndicator;
+      const link = document.querySelector(`.primary-nav a[href="#${route}"]`);
+      const icon = link.querySelector('svg');
+      const content = document.querySelector(`#main-content [data-view="${route}"] > :first-child`);
+      const start = lens.getBoundingClientRect();
+      link.click();
       await new Promise(requestAnimationFrame);
-      if (indicator.classList.contains('is-moving') && indicator.getBoundingClientRect().left > start
-        && getComputedStyle(indicator).filter !== 'blur(0px)' && getComputedStyle(indicator).filter !== 'none') break;
-    }
-    const style = getComputedStyle(indicator);
-    return { start, middle: indicator.getBoundingClientRect().left, end,
-      moving: indicator.classList.contains('is-moving'), filter: style.filter, color: style.backgroundColor };
-  });
-  assert(travel.middle > travel.start && travel.middle < travel.end, 'Glass indicator must interpolate between links.');
-  assert(travel.moving && travel.filter !== 'none' && travel.filter !== 'blur(0px)', `Moving indicator needs motion blur: ${JSON.stringify(travel)}`);
-  assert.notEqual(travel.color, 'rgba(0, 0, 0, 0)', 'Moving indicator needs a color tint.');
+      const animations = [
+        ...lens.getAnimations().filter(a => a.transitionProperty?.startsWith('--nav-')),
+        ...content.getAnimations().filter(a => a.animationName === 'tab-arrive'),
+        ...icon.getAnimations(),
+      ];
+      const seek = time => animations.forEach(a => { a.currentTime = time; });
+      seek(140);
+      const middle = lens.getBoundingClientRect();
+      const { opacity, transform } = getComputedStyle(content);
+      seek(100);
+      const shrink = new DOMMatrixReadOnly(getComputedStyle(icon).transform).a;
+      seek(260);
+      const pop = new DOMMatrixReadOnly(getComputedStyle(icon).transform).a;
+      seek(308);
+      const bounce = lens.getBoundingClientRect();
+      const target = link.getBoundingClientRect();
+      animations.forEach(a => a.finish());
+      return {
+        left: middle.left - start.left, right: middle.right - start.right,
+        stretch: middle.width - start.width, flatten: start.height - middle.height,
+        overshoot: (bounce.left + bounce.right - target.left - target.right) / 2,
+        shift: new DOMMatrixReadOnly(transform).e, opacity: Number(opacity), shrink, pop,
+        durations: animations.map(a => a.effect.getTiming().duration),
+        paperActive: Boolean(document.querySelector('.paper-tear')),
+      };
+    }, route);
+    assert.deepEqual(motion.durations, [400, 400, 400, 400]);
+    assert(motion.right > motion.left && motion.left * direction > 0 && motion.right * direction > 0);
+    assert(motion.stretch > 10 && motion.flatten > 2 && motion.overshoot * direction > .5);
+    assert(motion.shift * direction > 0 && motion.opacity > .78 && motion.opacity < 1);
+    assert(motion.shrink < .85 && motion.pop > 1.08 && motion.paperActive);
+    await settled(route);
+    await page.waitForFunction(() => !document.querySelector('.paper-tear'));
+  }
+  await page.evaluate(() => { Math.random = window.originalRandom; });
   for (const route of ['top', 'slices', 'works', 'about', 'top']) {
     await page.locator(`.primary-nav a[href="#${route}"]`).evaluate(link => link.click());
     await settled(route);
@@ -467,7 +515,6 @@ try {
         return { offset: Math.abs(lens.left - link.left), width: Math.abs(lens.width - link.width), target: link.height };
       }, route);
       assert(geometry.offset < 1 && geometry.width < 1 && geometry.target >= 44, `Glass geometry failed at ${width}px: ${JSON.stringify(geometry)}`);
-      assert(await page.locator('.primary-nav__indicator').evaluate(el => !el.classList.contains('is-moving') && getComputedStyle(el).filter === 'none'), 'Indicator must settle sharply.');
     }
   }
   await page.setViewportSize({ width: 390, height: 844 });
