@@ -120,26 +120,105 @@ h1 {
 .latin { margin: 15px 0 0; font-size: clamp(12px, 1.5vw, 17px); color: var(--muted); letter-spacing: .19em; }
 .entry { margin-top: 31px; }
 .enter {
+  position: relative;
+  isolation: isolate;
   min-height: 48px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 28px;
-  border: 1px solid var(--accent);
+  border: 1px solid transparent;
   border-radius: 4px;
   padding: 0 18px;
   color: var(--action-ink);
-  background: var(--accent);
   cursor: pointer;
   font-size: 15px;
   font-weight: 650;
   text-decoration: none;
-  transition: background .2s, border-color .2s;
 }
-.enter:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.enter:active { background: #e2b77e; border-color: #e2b77e; }
-.entry.building .enter { border-color: transparent; background: transparent; }
+.entry-plate {
+  position: absolute;
+  z-index: -1;
+  inset: -1px;
+  --plate-color: var(--accent);
+  pointer-events: none;
+}
+.enter:hover .entry-plate { --plate-color: var(--accent-hover); }
+.enter:active .entry-plate { --plate-color: #e2b77e; }
+.entry.building .entry-plate { --plate-color: transparent; }
+.entry-image { display: block; width: 100%; height: 100%; }
+.entry-image rect { fill: var(--plate-color); transition: fill .2s; }
+.entry-image text { fill: currentColor; visibility: hidden; }
+.entry.finished .entry-image text { visibility: visible; }
+.entry.finished #entry-label { color: transparent; }
+.entry-light {
+  position: absolute;
+  inset: -3px;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0;
+}
+.entry-light rect {
+  fill: none;
+  stroke: #fff3c9;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: var(--tail) calc(1px - var(--tail));
+  stroke-dashoffset: var(--tail);
+}
+.entry-light rect:nth-child(1) { --tail: .26px; opacity: .22; stroke-width: 4; filter: blur(3px); }
+.entry-light rect:nth-child(2) { --tail: .19px; opacity: .24; }
+.entry-light rect:nth-child(3) { --tail: .11px; opacity: .49; }
+.entry-light rect:nth-child(4) { --tail: .045px; opacity: .94; }
+.entry.finished .entry-plate { animation: entry-pulse 1s cubic-bezier(.33,.05,.24,1); }
+.entry.finished .entry-light { animation: entry-glow 1.14s ease-in-out; }
+.entry.finished .entry-light rect { animation: entry-sweep 1.14s cubic-bezier(.45,0,.46,1); }
+@keyframes entry-pulse {
+  0%, 100% { inset: -1px; }
+  39% { inset: calc(-1px - var(--entry-height) * .0525) calc(-1px - var(--entry-width) * .0525); }
+  72% { inset: calc(-1px + var(--entry-height) * .008) calc(-1px + var(--entry-width) * .008); }
+}
+@keyframes entry-glow {
+  0%, 100% { opacity: 0; }
+  13%, 77% { opacity: 1; }
+}
+@keyframes entry-sweep {
+  from { stroke-dashoffset: var(--tail); }
+  to { stroke-dashoffset: calc(var(--tail) - 1px); }
+}
 .art { position: relative; z-index: 1; width: min(112%, 630px); margin-left: -4%; }
 .art svg { display: block; width: 100%; overflow: visible; }
+.handoff { overflow: hidden; }
+.handoff .shell { z-index: 2; }
+.shell[hidden] { display: none; }
+.handoff.is-opening { background: transparent; }
+.site-loader { position: fixed; inset: 0; z-index: 5; overflow: hidden; pointer-events: none; }
+.loader-gather, .loader-wordmark { position: absolute; inset: 0; }
+.loader-title, .loader-brand { position: absolute; margin: 0; width: max-content; }
+.loader-title { padding-inline-end: 0; }
+.loader-brand { transform-origin: left top; }
+.loader-half {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 50%;
+  overflow: hidden;
+  background: var(--ground);
+}
+.loader-half--bottom { inset: 50% 0 auto; }
+.loader-half--bottom .loader-wordmark { top: -100%; bottom: auto; height: 200%; }
+.loader-half:not(.loader-half--bottom) .loader-wordmark { bottom: auto; height: 200%; }
+.loader-seam {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+}
 .foot { min-height: 61px; }
 .status { display: flex; align-items: center; gap: 8px; letter-spacing: .07em; }
 .lamp { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
@@ -230,7 +309,21 @@ h1 {
       </div>
       <p class="latin piece" id="latin" lang="en">BETWEEN STATES</p>
       <div class="entry" id="entry">
-        <a class="enter" href="/#top"><span class="piece" id="entry-label">进入网站 &nbsp;↗</span></a>
+        <a class="enter" href="/#top" target="_top">
+          <span class="piece" id="entry-label">进入网站 &nbsp;↗</span>
+          <span class="entry-plate" aria-hidden="true">
+            <svg class="entry-image" viewBox="0 0 121 48" preserveAspectRatio="none">
+              <rect width="100%" height="100%" rx="4"/>
+              <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle"></text>
+            </svg>
+            <svg class="entry-light" viewBox="0 0 128 54" preserveAspectRatio="none">
+              <rect x="2.5" y="2.5" width="123" height="49" rx="7" pathLength="1"/>
+              <rect x="2.5" y="2.5" width="123" height="49" rx="7" pathLength="1"/>
+              <rect x="2.5" y="2.5" width="123" height="49" rx="7" pathLength="1"/>
+              <rect x="2.5" y="2.5" width="123" height="49" rx="7" pathLength="1"/>
+            </svg>
+          </span>
+        </a>
       </div>
     </div>
 
@@ -278,10 +371,11 @@ h1 {
     <div class="reading piece" id="reading"><span>ψ</span> &nbsp;·&nbsp; 01 / BETWEEN STATES</div>
   </section>
   <footer class="foot">
-    <span class="status"><span class="lamp"></span><span id="status">准备就绪</span></span>
+    <span class="status"><span class="lamp"></span><span id="status" role="status">准备就绪</span></span>
   </footer>
   <div class="actors" aria-hidden="true"><svg></svg></div>
 </main>
+<div class="site-loader" aria-hidden="true" hidden></div>
 <script>
 (() => {
   const $ = selector => document.querySelector(selector)
@@ -305,6 +399,9 @@ h1 {
   const shade = $('#dark-wipe')
   const colorDetails = [$('#glow'), $('#scan-lines')]
   const link = entry.querySelector('a')
+  const entryLabel = $('#entry-label')
+  const entryImage = $('.entry-image')
+  entryImage.querySelector('text').textContent = entryLabel.textContent
   const htmlNodes = [stage, link, ...pieces, ...codeLines]
   const svgNS = 'http://www.w3.org/2000/svg'
   const runKey = 'between-states.swarm.build'
@@ -612,7 +709,7 @@ h1 {
       drag(() => htmlPoint(link, 0, 0), () => htmlPoint(link, 1, 1), 320, p => {
         entry.classList.toggle('building', p < 1)
       }),
-      write($('#entry-label'), 340)
+      write(entryLabel, 340)
     ])
     completeAt = Math.max(closing, titleAt + 580) + 320
   }
@@ -708,6 +805,21 @@ h1 {
     } catch {}
   }
 
+  function ding({context, mix}) {
+    const strike = context.currentTime + .012
+    for (const [pitch, volume, decay] of [[1396, .12, .34], [2792, .034, .17]]) {
+      const tone = context.createOscillator()
+      const level = context.createGain()
+      tone.frequency.value = pitch
+      level.gain.setValueAtTime(.0001, strike)
+      level.gain.exponentialRampToValueAtTime(volume, strike + .009)
+      level.gain.exponentialRampToValueAtTime(.0001, strike + decay)
+      tone.connect(level).connect(mix)
+      tone.start(strike)
+      tone.stop(strike + decay + .015)
+    }
+  }
+
   function renderJob(job, elapsed) {
     const {pen, sequence} = job
     if (elapsed < job.at || job.done) return
@@ -735,6 +847,7 @@ h1 {
   }
 
   function draw(now) {
+    if (actors.parentElement.hidden) return
     if (reduced.matches) return finish()
     if (building) {
       const elapsed = now - start
@@ -765,6 +878,7 @@ h1 {
   function finish() {
     cancelAnimationFrame(frame)
     titleMotion?.cancel()
+    const assembled = building && !reduced.matches
     building = false
     panel.classList.remove('active')
     show(heading, true)
@@ -774,16 +888,25 @@ h1 {
     audioGestures.abort()
     if (audio) {
       const {context} = audio
+      const audible = assembled && context.state === 'running' && !document.hidden
+      if (audible) ding(audio)
       audio = undefined
-      setTimeout(() => context.close().catch(() => {}), 120)
+      setTimeout(() => context.close().catch(() => {}), audible ? 420 : 120)
     }
     for (const mask of [lit, shade]) {
       mask.setAttribute('x', 155)
       mask.setAttribute('width', 210)
     }
     entry.classList.remove('building')
+    if (assembled) {
+      const {width, height} = boxes.get(link)
+      link.style.setProperty('--entry-width', width + 'px')
+      link.style.setProperty('--entry-height', height + 'px')
+      entryImage.setAttribute('viewBox', '0 0 ' + width + ' ' + height)
+    }
+    entry.classList.toggle('finished', assembled)
     entry.inert = false
-    status.textContent = reduced.matches ? '静态预览' : '组装完成'
+    status.textContent = reduced.matches ? '准备就绪' : '组装完成'
     deposit(1)
     drawDust(performance.now())
     if (!reduced.matches) frame = requestAnimationFrame(draw)
@@ -832,6 +955,133 @@ h1 {
     document.addEventListener('keydown', startSound, options)
     startSound()
   }
+})()
+</script>
+<script>
+(() => {
+  const frame = window.frameElement
+  if (frame?.id !== 'site-entrance') return
+
+  const shell = document.querySelector('.shell')
+  const link = document.querySelector('.enter')
+  const loader = document.querySelector('.site-loader')
+  const title = document.querySelector('#title')
+  const brand = document.querySelector('.signature')
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)')
+  const ease = 'cubic-bezier(.22,.75,.24,1)'
+  let entering = false
+
+  function waitForHome() {
+    if ('ready' in frame.dataset) return Promise.resolve()
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        frame.removeEventListener('entrance:ready', onReady)
+        reject(new Error('Homepage did not become ready'))
+      }, 8500)
+      function onReady() {
+        clearTimeout(timer)
+        resolve()
+      }
+      frame.addEventListener('entrance:ready', onReady, {once: true})
+    })
+  }
+
+  function makeLockup() {
+    const wordmark = document.createElement('div')
+    wordmark.className = 'loader-wordmark'
+    const name = title.cloneNode(true)
+    name.removeAttribute('id')
+    name.className = 'loader-title'
+    const mark = brand.cloneNode(true)
+    mark.className = 'signature loader-brand'
+    wordmark.append(name, mark)
+    return {wordmark, name, mark}
+  }
+
+  function brandPath(from, to) {
+    const controlA = {x: from.left + (to.x - from.left) * .72, y: from.top + 12}
+    const controlB = {x: to.x - 36, y: to.y - 92}
+    return Array.from({length: 17}, (_, index) => {
+      const p = index / 16
+      const q = 1 - p
+      const x = q ** 3 * from.left + 3 * q * q * p * controlA.x + 3 * q * p * p * controlB.x + p ** 3 * to.x
+      const y = q ** 3 * from.top + 3 * q * q * p * controlA.y + 3 * q * p * p * controlB.y + p ** 3 * to.y
+      return {transform: 'translate(' + x + 'px,' + y + 'px) scale(' + (1 - p * .28) + ')'}
+    })
+  }
+
+  async function gather() {
+    const from = title.getBoundingClientRect()
+    const markFrom = brand.getBoundingClientRect()
+    const initialSize = getComputedStyle(title).fontSize
+    const {wordmark, name, mark} = makeLockup()
+    wordmark.classList.add('loader-gather')
+    loader.replaceChildren(wordmark)
+    loader.hidden = false
+    const size = Math.min(168, Math.max(parseFloat(initialSize) * 1.28, innerWidth * .108))
+    name.style.fontSize = size + 'px'
+    const titleX = (loader.clientWidth - name.offsetWidth) / 2
+    const titleY = (loader.clientHeight - name.offsetHeight) / 2
+    Object.assign(name.style, {left: titleX + 'px', top: titleY + 'px'})
+    const markFrames = brandPath(markFrom, {x: titleX + 4, y: titleY - 26})
+    Object.assign(mark.style, {left: '0', top: '0', transform: markFrames.at(-1).transform})
+    title.style.visibility = 'hidden'
+    brand.style.visibility = 'hidden'
+    wordmark.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--ground')
+    const motion = {duration: 820, easing: ease}
+    await Promise.all([
+      wordmark.animate([{backgroundColor: 'transparent'}, {backgroundColor: '#0c1113cc', offset: .54}, {backgroundColor: '#0c1113'}], motion).finished,
+      name.animate([
+        {left: from.left + 'px', top: from.top + 'px', fontSize: initialSize},
+        {left: name.style.left, top: name.style.top, fontSize: name.style.fontSize}
+      ], motion).finished,
+      mark.animate(markFrames, motion).finished
+    ])
+    return wordmark
+  }
+
+  async function open(wordmark) {
+    const top = document.createElement('div')
+    top.className = 'loader-half'
+    const bottom = document.createElement('div')
+    bottom.className = 'loader-half loader-half--bottom'
+    top.append(wordmark)
+    bottom.append(wordmark.cloneNode(true))
+    const seam = document.createElement('div')
+    seam.className = 'loader-seam'
+    loader.replaceChildren(top, bottom, seam)
+    shell.hidden = true
+    document.body.classList.add('is-opening')
+    frame.dispatchEvent(new Event('entrance:opening'))
+    seam.animate([
+      {opacity: 0, transform: 'scaleX(0)'},
+      {opacity: .68, transform: 'scaleX(1)', offset: .53},
+      {opacity: 0, transform: 'scaleX(1)'}
+    ], {duration: 480, easing: ease})
+    await Promise.all([top, bottom].map((half, index) => half.animate([
+      {transform: 'translateY(0)'},
+      {transform: 'translateY(' + (index ? 101 : -101) + '%)'}
+    ], {duration: 700, delay: 155, fill: 'forwards', easing: 'cubic-bezier(.62,.04,.24,1)'}).finished))
+  }
+
+  link.addEventListener('click', async event => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    event.preventDefault()
+    if (entering) return
+    entering = true
+    document.body.classList.add('handoff')
+    link.setAttribute('aria-busy', 'true')
+    document.querySelector('#status').textContent = '正在加载网站'
+    try {
+      const [, wordmark] = await Promise.all([waitForHome(), reduced.matches ? null : gather()])
+      if (wordmark && !reduced.matches) await open(wordmark)
+      frame.dispatchEvent(new Event('entrance:entered'))
+    } catch {
+      frame.dispatchEvent(new Event('entrance:failed'))
+    }
+  })
+  document.body.dataset.entranceReady = ''
 })()
 </script>
 </body>

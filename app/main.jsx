@@ -800,7 +800,9 @@ function App() {
     shell.addEventListener('click', onClick);
     document.addEventListener('visibilitychange', onVisibilityChange);
     reducedMotion.addEventListener('change', onMotionChange);
-    if (location.hash !== `#${pageFromHash()}`) history.replaceState(null, '', `#${pageFromHash()}`);
+    if (!document.getElementById('site-entrance') && location.hash !== `#${pageFromHash()}`) {
+      history.replaceState(null, '', `#${pageFromHash()}`);
+    }
     return () => {
       history.scrollRestoration = oldRestoration;
       window.removeEventListener('hashchange', onHashChange);

@@ -60,7 +60,7 @@ if (entrance !== await read('.site-build/entrance.html')) {
   throw new Error('Production entrance differs from source.');
 }
 requireMarker(entrance, 'href="/#top"', 'Entrance link to the main site');
-requireMarker(builtHtml, "location.replace('/entrance.html'", 'Production entrance route');
+requireMarker(builtHtml, "frame.src = '/entrance.html?handoff=1'", 'Production entrance overlay');
 
 const assetDirectory = path.join(buildRoot, 'assets');
 const assetNames = (await readdir(assetDirectory)).sort();
