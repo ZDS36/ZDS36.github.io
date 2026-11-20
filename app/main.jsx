@@ -672,7 +672,7 @@ function App() {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const oldRestoration = history.scrollRestoration;
     let activeNavigation = null;
-    let queuedNav = null;
+    let lastNavigationClick = -Infinity;
     history.scrollRestoration = 'manual';
     const cancelNavigationPlayback = (active = activeNavigation) => {
       if (!active || active.canceled) return;
@@ -683,7 +683,6 @@ function App() {
     const stopNavigationTransition = () => {
       const active = activeNavigation;
       activeNavigation = null;
-      queuedNav = null;
       cancelNavigationPlayback(active);
     };
     const clearTransition = () => {
@@ -739,23 +738,25 @@ function App() {
       syncPage(animate, direction);
     };
     const openWithTransition = (nextPage, link) => {
-      if (activeNavigation) {
-        queuedNav = { nextPage, link };
-        return;
-      }
+      if (activeNavigation?.toPage === nextPage) return;
       const context = { stage, main, link };
       const canAnimate = pageRef.current !== nextPage && !reducedMotion.matches && !document.hidden
         && !root.classList.contains('theme-reveal');
       const direction = canAnimate && link.closest('.primary-nav')
         ? Math.sign(CHAPTERS.indexOf(nextPage) - CHAPTERS.indexOf(chapterFor(pageRef.current)))
         : 0;
-      const effect = canAnimate ? pickNavigationTransition(context) : null;
+      const now = performance.now();
+      // Keep quick clicks responsive while the 400 ms tab motion is still settling.
+      const quickSwitch = activeNavigation || now - lastNavigationClick < 400;
+      if (canAnimate || activeNavigation) lastNavigationClick = now;
+      const effect = canAnimate && !quickSwitch ? pickNavigationTransition(context) : null;
       if (!effect) {
+        stopNavigationTransition();
         navigate(nextPage, false, direction);
         return;
       }
 
-      const active = { effect: null, committed: false, canceled: false, stopSound: null };
+      const active = { toPage: nextPage, effect: null, committed: false, canceled: false, stopSound: null };
       activeNavigation = active;
       context.playSound = () => {
         if (activeNavigation !== active || active.canceled || active.stopSound
@@ -770,9 +771,7 @@ function App() {
       const finish = () => {
         if (activeNavigation !== active) return;
         commit();
-        const next = queuedNav;
         stopNavigationTransition();
-        if (next && next.nextPage !== pageRef.current) openWithTransition(next.nextPage, next.link);
       };
       try {
         active.effect = effect.start(context, commit);

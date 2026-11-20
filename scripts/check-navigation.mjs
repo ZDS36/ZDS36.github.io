@@ -133,6 +133,16 @@ try {
   const heardVoices = (before, count) => page.waitForFunction(
     expected => window.transitionSoundStarts === expected, before + count
   );
+  const switchDuringTransition = async (...routes) => {
+    const destinations = await page.evaluate(routes => routes.map(route => {
+      document.querySelector(`.primary-nav a[href="#${route}"]`).click();
+      return location.hash;
+    }), routes);
+    assert.deepEqual(destinations, routes.map(route => `#${route}`), 'Rapid clicks must navigate without waiting for the active effect.');
+    await settled(routes.at(-1));
+    assert.equal(await page.locator('.ink-nav, .paper-tear, .paper-shred-layer').count(), 0);
+    await page.waitForFunction(() => !document.getAnimations().some(a => a.animationName === 'tab-arrive' && a.playState === 'running'));
+  };
   const checkFrames = async () => {
     const result = await page.evaluate(() => window.navigationFrames);
     assert(result.checked > 0, 'No rendered frames sampled.');
@@ -432,8 +442,9 @@ try {
     }, route);
     assert(distance < 2, `${route} failed to align with the viewport.`);
   }
-  // Ink only covers the content, and rapid navigation keeps the latest destination.
+  // Let the preceding burst settle before inspecting the full ink effect.
   await page.waitForFunction(() => !document.querySelector('.ink-nav'));
+  await page.waitForTimeout(410);
   const beforeInkSound = await soundStarts();
   await page.locator('.site-header a[href="#works"]').click();
   await page.waitForFunction(() => document.getAnimations().some(a => a.animationName === 'ink-dissolve'));
@@ -452,12 +463,7 @@ try {
     };
   });
   assert.deepEqual(inkMotion, { duration: 1350, progressDuration: 650, mask: true, incoming: 'none', pointer: 'none' });
-  await page.evaluate(() => {
-    document.querySelector('.site-header a[href="#about"]').click();
-    document.querySelector('.site-header a[href="#slices"]').click();
-  });
-  await settled('slices');
-  await page.waitForFunction(() => !document.querySelector('.ink-nav'));
+  await switchDuringTransition('about', 'top', 'slices');
   assert.equal(await page.locator('.reading-progress').evaluate(el => getComputedStyle(el).transitionDuration), '0s');
   await page.evaluate(() => {
     Math.random = () => .5;
@@ -505,12 +511,7 @@ try {
       && !overlay.querySelector('iframe[src], iframe[srcdoc]')
       && !document.querySelector('.ink-nav');
   });
-  await page.evaluate(() => {
-    document.querySelector('.site-header a[href="#works"]').click();
-    document.querySelector('.site-header a[href="#top"]').click();
-  });
-  await settled('top');
-  await page.waitForFunction(() => !document.querySelector('.paper-tear'));
+  await switchDuringTransition('works', 'slices', 'top');
   await page.evaluate(() => { Math.random = () => .99; });
   const beforeShredSound = await soundStarts();
   await page.locator('.site-header a[href="#works"]').click();
@@ -521,7 +522,7 @@ try {
       && !document.querySelector('.ink-nav, .paper-tear');
   });
   await heardVoices(beforeShredSound, 18);
-  await page.waitForFunction(() => !document.querySelector('.paper-shred-layer'));
+  await switchDuringTransition('about', 'top', 'slices');
   await page.evaluate(() => {
     document.getElementById('offscreen-challenge').remove();
     Math.random = window.originalRandom;
@@ -549,6 +550,7 @@ try {
   await page.evaluate(() => { window.glassIndicator = document.querySelector('.primary-nav__indicator'); });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.waitForFunction(() => !document.querySelector('.primary-nav__indicator').getAnimations().length);
+  await page.waitForTimeout(410);
   await page.evaluate(() => { Math.random = () => .5; });
   for (const [route, direction] of [['about', 1], ['top', -1]]) {
     const motion = await page.evaluate(async route => {
@@ -589,7 +591,7 @@ try {
     assert(motion.right > motion.left && motion.left * direction > 0 && motion.right * direction > 0);
     assert(motion.stretch > 10 && motion.flatten > 2 && motion.overshoot * direction > .5);
     assert(motion.shift * direction > 0 && motion.opacity > .78 && motion.opacity < 1);
-    assert(motion.shrink < .85 && motion.pop > 1.08 && motion.paperActive);
+    assert(motion.shrink < .85 && motion.pop > 1.08 && motion.paperActive, JSON.stringify(motion));
     await settled(route);
     await page.waitForFunction(() => !document.querySelector('.paper-tear'));
   }
