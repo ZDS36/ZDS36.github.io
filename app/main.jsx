@@ -18,7 +18,7 @@ const FILM_POSTER = '/media/sunk-cost/poster.jpg?v=20261026-polished';
 const LOGIC_LAB_URL = '/tools/logic-lab/';
 const LOGIC_LAB_DOWNLOAD = '/downloads/logic-lab/logic-circuit-lab-beta.zip?v=guide-1';
 
-const PAGE_IDS = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'work-logic-lab', 'slices', 'about', 'contact'];
+const PAGE_IDS = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-logic-lab', 'slices', 'about', 'contact'];
 const CHAPTERS = ['top', 'works', 'slices', 'about', 'contact'];
 
 const NAV_ITEMS = [
@@ -60,18 +60,8 @@ const WORKS = [
     tone: 'blue'
   },
   {
-    id: 'work-dashboard',
-    number: '04',
-    title: '课程面板',
-    subtitle: '实用工具',
-    meta: 'TOOL / 2026',
-    summary: '把课程信息查看与操作流程整理进一个更清楚的本地网页面板。',
-    decision: '把复杂流程收进界面，让重要状态一眼可见。',
-    tone: 'coral'
-  },
-  {
     id: 'work-logic-lab',
-    number: '05',
+    number: '04',
     title: '数字电路实验台',
     subtitle: '浏览器里的数字逻辑实验',
     meta: 'WEB / BETA / 2026',
@@ -86,7 +76,6 @@ const PAGE_TITLES = {
   'work-film': '沉没成本 · 动态短片｜张刀宋',
   'work-qingping': '张刀宋净化 · 安卓软件下载｜张刀宋',
   'work-site': '未定态个人网站｜张刀宋',
-  'work-dashboard': '课程面板｜张刀宋',
   'work-logic-lab': '数字电路实验台 · 在线体验与离线下载｜张刀宋',
   about: '关于我｜张刀宋',
   slices: '年轮｜张刀宋',
@@ -95,6 +84,7 @@ const PAGE_TITLES = {
 
 function pageFromHash() {
   const requested = window.location.hash.slice(1);
+  if (requested === 'work-dashboard') return 'works';
   return PAGE_IDS.includes(requested) ? requested : 'top';
 }
 
@@ -378,18 +368,11 @@ function WorksView({ sharedEntering }) {
 }
 
 function WorkDetail({ work, nextWork, backPage, sharedEntering }) {
-  const isSite = work.id === 'work-site';
-  const facts = isSite
-    ? [
-        ['目标', '让个人表达、作品入口与浏览体验形成一个整体。'],
-        ['负责', '信息架构、界面设计、前端实现与响应式适配。'],
-        ['方式', 'React + CSS，保留轻量 Hash 导航和无障碍基础。']
-      ]
-    : [
-        ['目标', '把分散的课程操作与状态集中到一个本地界面。'],
-        ['负责', '流程整理、界面实现、状态反馈与安全发布。'],
-        ['原则', '真实账户与公开版本隔离，运行数据不进入公开副本。']
-      ];
+  const facts = [
+    ['目标', '让个人表达、作品入口与浏览体验形成一个整体。'],
+    ['负责', '信息架构、界面设计、前端实现与响应式适配。'],
+    ['方式', 'React + CSS，保留轻量 Hash 导航和无障碍基础。']
+  ];
 
   return (
     <section className={`view page work-detail${sharedEntering ? ' view--shared-enter' : ''}`} data-view={work.id} aria-label={work.title}>
@@ -660,7 +643,7 @@ function AboutView() {
         <div className="about-layout__story">
           <div className="about-layout__copy">
             <p>最初做这个网站，只是想做着玩。慢慢地，这里有了网页和实用工具，也有了短片、照片与生活记录。想做的东西，就试着做出来；想留住的瞬间，就放进这里。</p>
-            <p>现在的作品里，有动态短片《沉没成本》、数字电路实验台、安卓工具「张刀宋净化」和课程面板。「作品」放做出来的东西，「年轮」记下沿途的日常。</p>
+            <p>现在的作品里，有动态短片《沉没成本》、数字电路实验台和安卓工具「张刀宋净化」。「作品」放做出来的东西，「年轮」记下沿途的日常。</p>
             <p>最近在练吉他，因为喜欢 h3R3 刘清云。最想学会弹唱的是《还是会想你》，现在还在慢慢练。</p>
             <p>之前想在无畏契约打上钻石，这个小目标已经完成了，现在是超凡一。</p>
           </div>
@@ -702,7 +685,6 @@ function CurrentView({ page, backPage, sharedEntering, isHomeActive }) {
   if (page === 'work-film') return <FilmDetail backPage={backPage} sharedEntering={sharedEntering} />;
   if (page === 'work-qingping') return <SoftwareDetail backPage={backPage} sharedEntering={sharedEntering} />;
   if (page === 'work-site') return <WorkDetail work={WORKS[2]} nextWork={WORKS[3]} backPage={backPage} sharedEntering={sharedEntering} />;
-  if (page === 'work-dashboard') return <WorkDetail work={WORKS[3]} nextWork={WORKS[4]} backPage={backPage} sharedEntering={sharedEntering} />;
   if (page === 'work-logic-lab') return <LogicLabDetail backPage={backPage} sharedEntering={sharedEntering} />;
   if (page === 'slices') return <SlicesView />;
   if (page === 'about') return <AboutView />;
@@ -777,7 +759,8 @@ function App() {
         if (source && visualInViewport(source)) {
           const rect = source.getBoundingClientRect();
           const overlay = source.cloneNode(true);
-          overlay.querySelector('.work-visual__shape').style.transform = getComputedStyle(source.querySelector('.work-visual__shape')).transform;
+          const shape = source.querySelector('.work-visual__shape');
+          if (shape) overlay.querySelector('.work-visual__shape').style.transform = getComputedStyle(shape).transform;
           Object.assign(overlay.style, {
             position: 'fixed', left: `${rect.left}px`, top: `${rect.top}px`,
             width: `${rect.width}px`, height: `${rect.height}px`, zIndex: '1000', pointerEvents: 'none'
@@ -939,10 +922,10 @@ function App() {
     try {
       const timing = { duration: 700, easing: 'cubic-bezier(.22, .68, .3, 1)', fill: 'forwards' };
       const shape = pending.overlay.querySelector('.work-visual__shape');
-      shape.animate([
-        { transform: shape.style.transform },
-        { transform: getComputedStyle(target.querySelector('.work-visual__shape')).transform }
-      ], timing);
+      const targetShape = target.querySelector('.work-visual__shape');
+      if (shape && targetShape) {
+        shape.animate([{ transform: shape.style.transform }, { transform: getComputedStyle(targetShape).transform }], timing);
+      }
       animation = pending.overlay.animate([
         { left: `${pending.from.left}px`, top: `${pending.from.top}px`, width: `${pending.from.width}px`, height: `${pending.from.height}px` },
         { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` }

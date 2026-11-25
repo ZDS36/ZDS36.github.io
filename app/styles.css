@@ -244,7 +244,6 @@ h1:focus, .site-main:focus { outline: none; }
 }
 .work-visual { position: relative; container-type: inline-size; overflow: hidden; isolation: isolate; color: #f0eee5; background: radial-gradient(ellipse at 65% 35%, #535e344d, transparent 65%), #21271b; border: 1px solid #535c40; }
 .work-visual::before { content: ""; position: absolute; z-index: 1; inset: 4cqw; border: 1px solid #d4ef8620; pointer-events: none; }
-.work-visual--coral { color: #f1e8dd; background: radial-gradient(ellipse at 60% 30%, #a47d514a, transparent 65%), #302b24; border-color: #655543; }
 .work-visual__caption { position: absolute; top: 5cqw; left: 5cqw; font: .7rem/1.5 var(--mono); letter-spacing: .1em; }
 .work-visual__number { position: absolute; top: 5cqw; right: 5cqw; font: .7rem/1 var(--mono); color: inherit; }
 .work-visual__title { position: absolute; z-index: 2; left: 5cqw; bottom: 5cqw; font: clamp(3.2rem, 14cqw, 13rem)/1 var(--display-font); letter-spacing: -.07em; white-space: nowrap; }
@@ -252,9 +251,6 @@ h1:focus, .site-main:focus { outline: none; }
 .work-visual__orbit { position: absolute; top: 13%; left: 3%; width: 96%; height: 60%; border: 1px solid #d4ef8645; border-radius: 50%; rotate: -30deg; }
 .work-visual__orbit::after { content: ""; position: absolute; top: 15%; right: 14%; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 18px #d4ef8670; }
 .work-visual__note { position: absolute; right: 6cqw; bottom: 7cqw; color: #d5dcca; font: .55rem/1.6 var(--mono); writing-mode: vertical-rl; letter-spacing: .18em; }
-.work-visual--coral .work-visual__shape { top: 22%; right: 12%; width: 65cqw; aspect-ratio: 1.55; border: 7px solid #c9b493; border-top-width: 1.5rem; border-radius: 5px; background: repeating-linear-gradient(180deg, #2b3027 0 16%, #7e896a 16% 17%, #343d2e 17% 34%); box-shadow: 16px 24px 0 #c9b49316, 0 25px 45px #00000033; transform: rotate(-8deg); }
-.work-visual--coral .work-visual__shape::before { content: "•••"; position: absolute; left: .25rem; top: -1.8rem; color: #514b3e; letter-spacing: 3px; }
-.work-visual--coral .work-visual__orbit { border-color: #dfc7a42b; }
 .work-visual--hidden { visibility: hidden; }
 .featured-work__copy { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .8rem; padding: clamp(.85rem, 2vw, 1.65rem); }
 .featured-work__copy h2 { margin: .35rem 0 0; font: clamp(1.45rem, 2.5vw, 2rem)/1.2 var(--display-font); }

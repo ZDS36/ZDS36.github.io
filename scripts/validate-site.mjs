@@ -31,7 +31,7 @@ function requireMarker(text, marker, label) {
   }
 }
 
-for (const requiredCopy of ['张刀宋', '作品', '年轮', '关于', '联系我', '未定态', '课程面板', '沉没成本', '张刀宋净化', '一键配置', '开机自启']) {
+for (const requiredCopy of ['张刀宋', '作品', '年轮', '关于', '联系我', '未定态', '数字电路实验台', '沉没成本', '张刀宋净化', '一键配置', '开机自启']) {
   requireMarker(sourceHtml + sourceJsx, requiredCopy, 'Site copy');
 }
 
@@ -41,7 +41,7 @@ for (const forbiddenCopy of ['选择一个入口', '薛定谔', '\uFFFD']) {
   }
 }
 
-for (const route of ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'work-logic-lab', 'slices', 'about', 'contact']) {
+for (const route of ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-logic-lab', 'slices', 'about', 'contact']) {
   requireMarker(sourceJsx, route, 'Route source');
 }
 

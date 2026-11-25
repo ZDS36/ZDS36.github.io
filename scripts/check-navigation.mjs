@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const base = new URL(process.argv[2] || 'http://127.0.0.1:4173');
 assert(['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname), 'Use a local preview URL.');
-const routes = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'work-logic-lab', 'slices', 'about', 'contact'];
+const routes = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-logic-lab', 'slices', 'about', 'contact'];
 const weatherDates = ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12'];
 const weatherForecast = {
   current: { temperature_2m: 18, weather_code: 0, is_day: 1 },
@@ -184,7 +184,7 @@ try {
   assert.equal(await page.evaluate(() => window.sawStaggeredNavigation), true);
   console.log('Passed: root entrance, loading lockup, split and keyboard handoff to the mounted homepage.');
   assert.equal(await page.locator('.featured-work').getAttribute('href'), '#work-film');
-  assert.equal(await page.locator('.work-card').count(), 5);
+  assert.equal(await page.locator('.work-card').count(), 4);
   assert.deepEqual(videoRequests, [], 'Homepage must not download the film.');
   const weather = page.getByRole('complementary', { name: '本地天气' });
   await weather.getByText('上海', { exact: true }).waitFor();
@@ -250,12 +250,12 @@ try {
   await navigate('works');
   await page.locator('a[href="#work-site"]').first().click();
   await settled('work-site');
-  await page.locator('a[href="#work-dashboard"]').first().click();
-  await settled('work-dashboard');
+  await page.locator('.next-work[href="#work-logic-lab"]').click();
+  await settled('work-logic-lab');
   await page.goBack();
   await settled('work-site');
   await page.goForward();
-  await settled('work-dashboard');
+  await settled('work-logic-lab');
 
   await page.setViewportSize({ width: 390, height: 560 });
   await navigate('works');
@@ -387,15 +387,17 @@ try {
   await page.waitForFunction(() => !document.querySelector('body > .work-visual') && !document.querySelector('.work-visual--hidden'));
   assert.deepEqual(errors, [], 'Hover-to-detail transition reported errors.');
   console.log('Passed: cover artwork moves and enlarges on hover, returns on leave, and opens the detail without leftover overlays.');
-  for (const route of ['work-site', 'work-dashboard']) {
+  for (const route of ['work-site', 'work-logic-lab']) {
     await navigate('works');
     await page.waitForFunction(() => !document.querySelector('body > .work-visual') && !document.getAnimations().some(a => a.animationName === 'paper-arrive' && a.playState === 'running'));
     await page.mouse.move(0, 0);
     const card = page.locator(`.work-card[href="#${route}"]`);
     await card.hover();
     await page.waitForFunction(id => {
-      const matrix = new DOMMatrix(getComputedStyle(document.querySelector(`.work-card[href="#${id}"] .work-visual__shape`)).transform);
-      return Math.hypot(matrix.a, matrix.b) > 1.1 && matrix.e < -10;
+      const element = document.querySelector(`.work-card[href="#${id}"]`);
+      const shape = element.querySelector('.work-visual__shape');
+      const matrix = new DOMMatrix(getComputedStyle(shape || element).transform);
+      return shape ? Math.hypot(matrix.a, matrix.b) > 1.1 && matrix.e < -10 : matrix.f < -1;
     }, route);
     await page.screenshot({ path: path.join(screenshotDirectory, `${route}-hover.png`) });
     await card.click();
@@ -749,6 +751,10 @@ try {
   assert.equal(await theme(), 'dark', 'Theme must change without View Transitions support.');
   console.log('Passed: immediate theme switch feedback, two-way reveal, rapid reversal, keyboard, persistence, reduced motion and API fallback.');
 
+  await page.goto(new URL('/?check=legacy-work#work-dashboard', base).href);
+  await settled('works', false);
+  assert.equal(new URL(page.url()).hash, '#works');
+  assert.equal(await page.locator('.work-card[href="#work-dashboard"]').count(), 0);
   assert.deepEqual(errors, [], 'Navigation or theme switching reported errors.');
   console.log('Passed: glass indicator interpolation, rapid reversal, persistent DOM, 4 responsive widths, keyboard links and reduced motion.');
   console.log('Passed: continuous scrolling, parallax, stable DOM/focus/history, all three randomized transitions, progress interpolation, rapid navigation and reduced motion.');
