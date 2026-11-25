@@ -60,6 +60,11 @@ try {
       return document.documentElement.scrollWidth <= innerWidth + 1 && tools.bottom <= header.bottom + 1;
     }), `Simulator toolbar overflows at ${width}px.`);
     if (width === 390) {
+      await page.locator('#toggle-library').tap();
+      await page.locator('#sample-picker').selectOption('2');
+      assert.equal(await page.locator('#project-name').innerText(), '三人表决');
+      await page.locator('#diagram[data-routing=ready]').waitFor();
+      assert.equal(await page.locator('.route-blocked').count(), 0);
       await page.locator('#open-tutorial').tap();
       await page.locator('[data-tutorial-course=truth]').tap();
       await page.locator('#tutorial-layer:not([hidden])').waitFor();
@@ -78,6 +83,13 @@ try {
       await page.locator('[data-verify=truth]').click();
       await page.waitForFunction(() => document.getElementById('status').textContent.startsWith('验证完成'));
       assert.match(await page.locator('.table-summary').innerText(), /符合 72 · 不符 0/);
+      const isLayout = url => /\/tools\/logic-lab\/elk-(?:worker|fallback)\.js$/.test(url);
+      assert.ok(!requests.some(isLayout), 'Opening, viewing and verifying an example must leave the layout engine unloaded.');
+      await page.locator('#arrange').click();
+      await page.waitForFunction(() => document.getElementById('status').textContent.startsWith('已整理器件和导线'));
+      await page.locator('#diagram[data-routing=ready]').waitFor();
+      assert.ok(requests.some(url => url.endsWith('/elk-worker.js')), 'First arrangement must request the separate worker.');
+      assert.ok(!requests.some(url => url.endsWith('/elk-fallback.js')), 'The fallback must remain unloaded when the worker succeeds.');
     }
     assert.deepEqual(errors, []);
     await page.close();

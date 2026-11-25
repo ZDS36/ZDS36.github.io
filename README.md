@@ -72,7 +72,7 @@ npm run promote
 
 「张刀宋净化」位于作品区第二项，介绍与下载页为 `#work-qingping`，涵盖功能、适用系统、安装配置、权限说明和使用限制。0.2.3 APK 与文字说明保存在 `public/downloads/zhangdaosong/`，通过原有 build / check / promote 流程同步到根目录 `downloads/zhangdaosong/`。校验会核对 APK 的已验证 SHA-256；签名私钥、手机数据和本地调试材料不进入网站。
 
-「数字电路实验台」的介绍页为 `#work-logic-lab`。更新时，将同一次构建的 HTML 和离线 ZIP 分别放入 `public/tools/logic-lab/index.html` 和 `public/downloads/logic-lab/logic-circuit-lab-beta.zip`。离线 ZIP 包含 `数字电路实验台.html` 和 `先读我.txt`。`npm run check` 会校验体验页和下载文件，`npm run promote` 会同步两个文件到 GitHub Pages 发布目录。可在本地预览后运行 `node scripts/check-logic-lab.mjs http://127.0.0.1:4175`，验证介绍入口、窄屏工具栏和在线计算。
+「数字电路实验台」的介绍页为 `#work-logic-lab`。更新在线版时，将实验台构建输出的 `online/index.html`、`online/elk-worker.js` 和 `online/elk-fallback.js` 放入 `public/tools/logic-lab/`。两个排版脚本在点击「一键整理」时按需加载。离线 ZIP 放在 `public/downloads/logic-lab/logic-circuit-lab-beta.zip`，包含可以独立运行的 `数字电路实验台.html` 和 `先读我.txt`。`npm run check` 校验体验页、排版资源和下载文件，`npm run promote` 将它们同步到 GitHub Pages 发布目录。可在本地预览后运行 `node scripts/check-logic-lab.mjs http://127.0.0.1:4175`，验证介绍入口、窄屏工具栏、按需加载和在线计算。
 
 ## 浏览器回归
 

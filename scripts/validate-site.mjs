@@ -104,7 +104,14 @@ for (const [relative, href] of [
   if (source.length < 64 || !source.equals(built)) throw new Error(`Digital circuit lab asset differs from source: ${relative}`);
   requireMarker(builtJs, href, 'Digital circuit lab link');
   if (relative.endsWith('.html')) {
-    requireMarker(built.toString('utf8'), '<title>数字电路实验台</title>', 'Digital circuit lab page');
+    const html=built.toString('utf8');
+    requireMarker(html, '<title>数字电路实验台</title>', 'Digital circuit lab page');
+    for (const name of ['elk-worker.js','elk-fallback.js']) {
+      requireMarker(html, './'+name, 'On-demand layout file');
+      const file=path.join('tools','logic-lab',name);
+      const [original,asset]=await Promise.all([readFile(path.join(repositoryRoot,'public',file)),readFile(path.join(buildRoot,file))]);
+      if (asset.length<64||!asset.equals(original)) throw new Error(`Digital circuit lab layout asset differs from source: ${name}`);
+    }
   } else if (built.readUInt32LE() !== 0x04034b50) {
     throw new Error('Digital circuit lab download does not have a ZIP header.');
   }

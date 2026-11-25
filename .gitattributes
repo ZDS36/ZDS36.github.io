@@ -1,3 +1,5 @@
-# Preserve the exact HTML bytes used in the offline ZIP.
+# Preserve the generated experiment page and vendored layout files byte for byte.
 public/tools/logic-lab/index.html -text -diff
 tools/logic-lab/index.html -text -diff
+public/tools/logic-lab/elk-*.js -text -diff
+tools/logic-lab/elk-*.js -text -diff
