@@ -44,8 +44,25 @@ try {
       assert.equal(download.suggestedFilename(), 'logic-circuit-lab-beta.zip');
       assert.ok((await readFile(await download.path())).equals(expectedZip), 'ZIP differs from the checked release.');
       await detail.getByRole('link', { name: '返回作品' }).click();
-      await page.locator('.work-card[href="#work-logic-lab"]').click();
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      const card = page.locator('.work-card[href="#work-logic-lab"]');
+      await card.scrollIntoViewIfNeeded();
+      const archive = await page.locator('.archive').elementHandle();
+      const scroll = () => page.locator('#main-content').evaluate(main => main.scrollTop);
+      const savedScroll = await scroll();
+      const checkTransition = async () => {
+        assert.equal(await page.locator('body > .work-visual').count(), 0, 'The lab transition must not clone or scale its cover.');
+        assert.equal(await page.locator('.chapter-mask').evaluate(mask => mask.getAnimations().length), 0, 'The lab transition must not blur the page.');
+      };
+      await card.click();
       await detail.waitFor();
+      assert.equal(await archive.evaluate(view => view.isConnected && view.hidden), true, 'Keep the list mounted behind the lab detail.');
+      await checkTransition();
+      await detail.getByRole('link', { name: '返回作品' }).click();
+      await card.waitFor();
+      assert.equal(await archive.evaluate(view => view.isConnected && !view.hidden), true, 'Reuse the visible archive on return.');
+      assert.ok(Math.abs(await scroll() - savedScroll) <= 2, 'Restore the previous position in the works list.');
+      await checkTransition();
       await page.goto(new URL('/#slices', base).href);
       const entry = page.locator('.moment-card').filter({ hasText: '数字电路实验台上线' });
       assert.equal(await entry.locator('..').locator('time').getAttribute('datetime'), '2026-11-26');

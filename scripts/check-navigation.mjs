@@ -111,8 +111,8 @@ try {
 
   const settled = async (route, focus = true) => {
     await page.waitForFunction(({ route, focus }) => {
-      const views = document.querySelectorAll('[data-view]');
-      const target = document.querySelector(`[data-view="${route}"]`);
+      const views = [...document.querySelectorAll('[data-view]')].filter(view => !view.closest('[hidden]'));
+      const target = views.find(view => view.dataset.view === route);
       return views.length === (route.startsWith('work-') ? 1 : 5) && target
         && location.hash === `#${route}`
         && (!focus || document.activeElement === target.querySelector('h1'));

@@ -29,6 +29,7 @@ const NAV_ITEMS = [
 ];
 
 const chapterFor = (page) => page.startsWith('work-') ? 'works' : page;
+const involvesLogicLab = (from, to) => from === 'work-logic-lab' || to === 'work-logic-lab';
 
 const WORKS = [
   {
@@ -739,6 +740,7 @@ function App() {
       const nextPage = pageFromHash();
       if (window.location.hash !== `#${nextPage}`) history.replaceState(null, '', `#${nextPage}`);
       const oldPage = pageRef.current;
+      const logicNavigation = involvesLogicLab(oldPage, nextPage);
       clearTransition();
       const enteringWork = !oldPage.startsWith('work-') && nextPage.startsWith('work-');
       const returning = oldPage.startsWith('work-') && originRef.current?.workId === oldPage && originRef.current.page === nextPage;
@@ -747,7 +749,7 @@ function App() {
       } else if (oldPage.startsWith('work-') && nextPage.startsWith('work-')) {
         originRef.current = null;
       }
-      if ((enteringWork || returning) && animate) {
+      if ((enteringWork || returning) && animate && !logicNavigation) {
         const workId = enteringWork ? nextPage : oldPage;
         const source = main.querySelector(`[data-view="${oldPage}"] [data-work-visual="${workId}"]`);
         if (source && visualInViewport(source)) {
@@ -766,7 +768,9 @@ function App() {
       }
       pageRef.current = nextPage;
       setPage(nextPage);
-      setNavigation({ page: nextPage, focus: true, animate, direction, restore: returning ? originRef.current.scroll : null });
+      setNavigation({ page: nextPage, focus: true, animate: animate && !logicNavigation, direction,
+        logicArrival: animate && oldPage !== nextPage && nextPage === 'work-logic-lab',
+        restore: returning ? originRef.current.scroll : null });
     };
     const navigate = (nextPage, animate, direction) => {
       if (location.hash !== `#${nextPage}`) history.pushState(null, '', `#${nextPage}`);
@@ -775,8 +779,9 @@ function App() {
     const openWithTransition = (nextPage, link) => {
       if (activeNavigation?.toPage === nextPage) return;
       const context = { stage, main, link };
+      const logicNavigation = involvesLogicLab(pageRef.current, nextPage);
       const canAnimate = pageRef.current !== nextPage && !reducedMotion.matches && !document.hidden
-        && !root.classList.contains('theme-reveal');
+        && !root.classList.contains('theme-reveal') && !logicNavigation;
       const direction = canAnimate && link.closest('.primary-nav')
         ? Math.sign(CHAPTERS.indexOf(nextPage) - CHAPTERS.indexOf(chapterFor(pageRef.current)))
         : 0;
@@ -892,6 +897,7 @@ function App() {
     }
     // Replay the existing paper arrival only for explicitly selected chapters.
     section.classList.remove('is-arriving');
+    section.classList.toggle('is-logic-arriving', Boolean(navigation.logicArrival));
     if (navigation.animate) {
       void section.offsetWidth;
       section.classList.add('is-arriving');
@@ -942,7 +948,7 @@ function App() {
   useEffect(() => {
     const main = mainRef.current;
     const shell = main.closest('.app-shell');
-    const sections = [...main.querySelectorAll('[data-view]')];
+    const sections = [...main.querySelectorAll('[data-view]')].filter(section => !section.closest('[hidden]'));
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let frame = 0;
     const update = () => {
@@ -991,6 +997,7 @@ function App() {
     };
   }, [isDetail, navigation.page]);
 
+  const hasRetainedArchive = navigation.page === 'work-logic-lab' && originRef.current?.workId === navigation.page;
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content" onClick={(event) => {
@@ -1001,15 +1008,16 @@ function App() {
       <div className="ink-stage">
         <AmbientLight />
         <main ref={mainRef} id="main-content" className="site-main" tabIndex="-1">
-          {isDetail ? (
-            <CurrentView key={navigation.page} page={navigation.page}
-              backPage={originRef.current?.workId === navigation.page ? originRef.current.page : 'works'}
-              sharedEntering={pendingRef.current?.toPage === navigation.page} />
-          ) : (
-            <div className="archive">
+          {(!isDetail || hasRetainedArchive) && (
+            <div className="archive" hidden={isDetail}>
               {CHAPTERS.map(id => <CurrentView key={id} page={id} sharedEntering={pendingRef.current?.toPage === id}
                 isHomeActive={page === 'top'} />)}
             </div>
+          )}
+          {isDetail && (
+            <CurrentView key={navigation.page} page={navigation.page}
+              backPage={originRef.current?.workId === navigation.page ? originRef.current.page : 'works'}
+              sharedEntering={pendingRef.current?.toPage === navigation.page} />
           )}
         </main>
         <div ref={maskRef} className="chapter-mask" aria-hidden="true" />
