@@ -41,7 +41,7 @@ for (const forbiddenCopy of ['选择一个入口', '薛定谔', '\uFFFD']) {
   }
 }
 
-for (const route of ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'slices', 'about', 'contact']) {
+for (const route of ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'work-logic-lab', 'slices', 'about', 'contact']) {
   requireMarker(sourceJsx, route, 'Route source');
 }
 
@@ -96,4 +96,18 @@ for (const name of ['ZhangDaoSongJinghua-0.2.3.apk', 'quick-start.txt']) {
   requireMarker(sourceJsx, `/downloads/zhangdaosong/${name}`, 'Software download link');
 }
 
-console.log('Site source, film assets, APK release hash and production build passed validation.');
+for (const [relative, href] of [
+  ['tools/logic-lab/index.html', '/tools/logic-lab/'],
+  ['downloads/logic-lab/logic-circuit-lab-beta.zip', '/downloads/logic-lab/logic-circuit-lab-beta.zip']
+]) {
+  const [source, built] = await Promise.all([readFile(path.join(repositoryRoot, 'public', relative)), readFile(path.join(buildRoot, relative))]);
+  if (source.length < 64 || !source.equals(built)) throw new Error(`Digital circuit lab asset differs from source: ${relative}`);
+  requireMarker(builtJs, href, 'Digital circuit lab link');
+  if (relative.endsWith('.html')) {
+    requireMarker(built.toString('utf8'), '<title>数字电路实验台</title>', 'Digital circuit lab page');
+  } else if (built.readUInt32LE() !== 0x04034b50) {
+    throw new Error('Digital circuit lab download does not have a ZIP header.');
+  }
+}
+
+console.log('Site source, film and software assets, and production build passed validation.');

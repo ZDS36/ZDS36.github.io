@@ -8,6 +8,15 @@ import powerLabUrl from './photos/power-lab-2026-11-08.jpg';
 // 按实际发生日期填写；年轮会自动排序，补写过去的内容不用手动调整位置。
 export const MOMENTS = [
   {
+    id: 'logic-circuit-lab-2026-11-26',
+    date: '2026-11-26',
+    title: '数字电路实验台上线',
+    text: '做了一个能在浏览器里拉线的数字电路实验台。从三人表决的真值表开始，陆续加上了时序验证、芯片引脚图和操作教程。现在可以在线搭电路，也能下载下来断网用。',
+    tag: '实验',
+    href: '#work-logic-lab',
+    photos: []
+  },
+  {
     id: 'power-lab-2026-11-08',
     date: '2026-11-08',
     title: '电力实验随手拍',

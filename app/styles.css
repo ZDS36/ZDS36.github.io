@@ -709,8 +709,25 @@ h1:focus, .site-main:focus { outline: none; }
 .app-boundaries details { min-width: 0; color: var(--faint); font-size: .75rem; }
 .app-boundaries summary { cursor: pointer; min-height: 44px; padding-block: .8rem; }
 .app-boundaries code { display: block; overflow-wrap: anywhere; line-height: 1.8; }
+.work-visual--logic { background: #dce9e9; border-color: var(--line); }
+.work-visual--logic::before { content: none; }
+.work-visual--logic img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.logic-detail .logic-detail__hero { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.25fr); align-items: center; gap: clamp(1.5rem, 4vw, 3rem); margin-inline: 0; padding-bottom: clamp(2rem, 4vw, 3rem); }
+.logic-detail .logic-detail__hero > div:not(.work-visual) { display: block; padding: 0; }
+.logic-detail .logic-detail__hero .page-kicker { margin: 0 0 .75rem; }
+.logic-detail .logic-detail__hero h1 { font-size: clamp(2.2rem, 4.2vw, 4.1rem); }
+.logic-detail__preview { border-radius: .75rem; }
+.logic-detail__preview img { height: auto; }
+.logic-detail__intro { max-width: 29rem; margin: 1rem 0 0; color: var(--muted); line-height: 1.85; }
+.logic-detail__actions { display: flex; align-items: stretch; flex-wrap: wrap; gap: .65rem; margin-top: 1.5rem; }
+.logic-detail__actions a { display: inline-flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 48px; padding: .6rem .9rem; border-radius: .45rem; }
+.logic-detail__download { border: 1px solid var(--line); color: var(--paper); font-size: .92rem; }
+.logic-detail__download:hover { border-color: var(--accent); color: var(--accent); }
+.logic-detail .work-detail__hero .logic-detail__note { margin-top: .8rem; font-size: .78rem; }
+.moment-card__link { display: inline-flex; align-items: center; min-height: 44px; gap: .45rem; margin-top: .45rem; }
 @media (max-width: 800px) {
   .app-download, .app-guide { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
   .app-features { grid-template-columns: minmax(0, 1fr); gap: 2rem; }
   .app-download__action { max-width: 30rem; }
+  .logic-detail .logic-detail__hero { grid-template-columns: minmax(0, 1fr); }
 }

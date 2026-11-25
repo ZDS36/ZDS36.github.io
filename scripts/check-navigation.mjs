@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const base = new URL(process.argv[2] || 'http://127.0.0.1:4173');
 assert(['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname), 'Use a local preview URL.');
-const routes = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'slices', 'about', 'contact'];
+const routes = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'work-logic-lab', 'slices', 'about', 'contact'];
 const weatherDates = ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12'];
 const weatherForecast = {
   current: { temperature_2m: 18, weather_code: 0, is_day: 1 },
@@ -184,7 +184,7 @@ try {
   assert.equal(await page.evaluate(() => window.sawStaggeredNavigation), true);
   console.log('Passed: root entrance, loading lockup, split and keyboard handoff to the mounted homepage.');
   assert.equal(await page.locator('.featured-work').getAttribute('href'), '#work-film');
-  assert.equal(await page.locator('.work-card').count(), 4);
+  assert.equal(await page.locator('.work-card').count(), 5);
   assert.deepEqual(videoRequests, [], 'Homepage must not download the film.');
   const weather = page.getByRole('complementary', { name: '本地天气' });
   await weather.getByText('上海', { exact: true }).waitFor();

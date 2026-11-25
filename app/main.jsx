@@ -5,6 +5,7 @@ import './styles.css';
 import { pickNavigationTransition } from './navigation-transitions.js';
 import { playNavigationSound, unlockNavigationAudio } from './navigation-audio.js';
 import avatarUrl from './avatar.jpg';
+import logicLabPreview from './photos/logic-lab-preview.jpg';
 import { MOMENTS } from './moments.js';
 import { groupMoments } from './timeline.js';
 import PrivateMessage from './PrivateMessage.jsx';
@@ -14,8 +15,10 @@ const TIMELINE = groupMoments(MOMENTS);
 const FILM_URL = '/media/sunk-cost/film.mp4?v=20261026-polished';
 const FILM_HTML_URL = '/media/sunk-cost/animation.html?v=20261026-polished';
 const FILM_POSTER = '/media/sunk-cost/poster.jpg?v=20261026-polished';
+const LOGIC_LAB_URL = '/tools/logic-lab/';
+const LOGIC_LAB_DOWNLOAD = '/downloads/logic-lab/logic-circuit-lab-beta.zip';
 
-const PAGE_IDS = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'slices', 'about', 'contact'];
+const PAGE_IDS = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'work-logic-lab', 'slices', 'about', 'contact'];
 const CHAPTERS = ['top', 'works', 'slices', 'about', 'contact'];
 
 const NAV_ITEMS = [
@@ -65,6 +68,15 @@ const WORKS = [
     summary: '把课程信息查看与操作流程整理进一个更清楚的本地网页面板。',
     decision: '把复杂流程收进界面，让重要状态一眼可见。',
     tone: 'coral'
+  },
+  {
+    id: 'work-logic-lab',
+    number: '05',
+    title: '数字电路实验台',
+    subtitle: '浏览器里的数字逻辑实验',
+    meta: 'WEB / BETA / 2026',
+    summary: '把开关、逻辑门和芯片接成电路，用真值表和时序逐步验证输出。',
+    tone: 'logic'
   }
 ];
 
@@ -75,6 +87,7 @@ const PAGE_TITLES = {
   'work-qingping': '张刀宋净化 · 安卓软件下载｜张刀宋',
   'work-site': '未定态个人网站｜张刀宋',
   'work-dashboard': '课程面板｜张刀宋',
+  'work-logic-lab': '数字电路实验台 · 在线体验与离线下载｜张刀宋',
   about: '关于我｜张刀宋',
   slices: '年轮｜张刀宋',
   contact: '联系方式｜张刀宋'
@@ -250,6 +263,13 @@ function ArrowLink({ href, children, className = '' }) {
 }
 
 function WorkVisual({ work, className = '' }) {
+  if (work.tone === 'logic') {
+    return (
+      <div className={`work-visual work-visual--logic ${className}`.trim()} data-work-visual={work.id} aria-hidden="true">
+        <img src={logicLabPreview} width="1300" height="820" alt="" loading="lazy" decoding="async" />
+      </div>
+    );
+  }
   return (
     <div className={`work-visual work-visual--${work.tone} ${className}`.trim()} data-work-visual={work.id} aria-hidden="true">
       <span className="work-visual__caption">{work.meta}</span>
@@ -290,6 +310,7 @@ function Hero({ sharedEntering, isHomeActive }) {
 
         <div className="home__actions">
           <ArrowLink href="#works">查看作品</ArrowLink>
+          <a className="text-link" href="#work-logic-lab">数字电路实验台 <span aria-hidden="true">→</span></a>
           <a className="text-link" href="#about">关于这个空间 <span aria-hidden="true">→</span></a>
         </div>
       </div>
@@ -346,12 +367,12 @@ function WorksView({ sharedEntering }) {
         index="01"
         label="SELECTED WORKS"
         title="作品"
-        intro="一部动态短片、两个实用工具，以及这个个人网站。"
+        intro="短片、数字电路实验台、实用工具，以及这个个人网站。"
       />
       <div className="works-grid">
         {WORKS.map((work) => <WorkCard key={work.id} work={work} />)}
       </div>
-      <footer className="page-foot"><span>04 PROJECTS</span><span>MORE / IN PROGRESS</span></footer>
+      <footer className="page-foot"><span>{String(WORKS.length).padStart(2, '0')} PROJECTS</span><span>MORE / IN PROGRESS</span></footer>
     </section>
   );
 }
@@ -396,6 +417,41 @@ function WorkDetail({ work, nextWork, backPage, sharedEntering }) {
         <strong>{nextWork.title}</strong>
         <i aria-hidden="true">→</i>
       </a>
+    </section>
+  );
+}
+
+function LogicLabDetail({ backPage, sharedEntering }) {
+  const work = WORKS.find(item => item.id === 'work-logic-lab');
+  return (
+    <section className={`view page work-detail app-detail logic-detail${sharedEntering ? ' view--shared-enter' : ''}`} data-view={work.id} aria-label={work.title}>
+      <a className="back-link-v2" href={`#${backPage}`}><span aria-hidden="true">←</span> 返回{backPage === 'top' ? '首页' : '作品'}</a>
+      <header className="work-detail__hero logic-detail__hero">
+        <div>
+          <p className="page-kicker">公开内测 · 数字逻辑</p>
+          <h1 tabIndex="-1">{work.title}</h1>
+          <p className="logic-detail__intro">{work.summary}</p>
+          <div className="logic-detail__actions">
+            <a className="app-download__button" href={LOGIC_LAB_URL}>打开实验台 <span aria-hidden="true">↗</span></a>
+            <a className="logic-detail__download" href={LOGIC_LAB_DOWNLOAD} download>下载离线版 <span aria-hidden="true">↓</span></a>
+          </div>
+          <p className="logic-detail__note">ZIP 约 1 MB。解压后用 Edge 打开里面的 HTML 文件即可离线使用。</p>
+        </div>
+        <div className="work-visual work-visual--logic logic-detail__preview" data-work-visual={work.id}>
+          <img src={logicLabPreview} width="1300" height="820" alt="实验台的三人表决示例，逻辑芯片和接线显示在中间，真值表在右侧" decoding="async" />
+        </div>
+      </header>
+      <section className="app-guide" aria-labelledby="logic-lab-start">
+        <div>
+          <h2 id="logic-lab-start">从三人表决开始</h2>
+          <p>实验台有 8 个示例。第一次打开，可以点「使用教程」，跟着高亮操作完成一轮练习。</p>
+        </div>
+        <ol>
+          <li><h3>摆器件、拉导线</h3><p>从器件库加入开关、逻辑门或 74LS 系列芯片。点两个引脚接线，双击已有导线可以拉出分支。</p></li>
+          <li><h3>对照预期输出</h3><p>在真值表里填写预期值，再验证实际输出。触发器和计数器可以在时序面板里逐拍检查。</p></li>
+          <li><h3>保存自己的实验</h3><p>新建工作区后，草稿会自动保存到当前浏览器。在线版和离线版之间，可以用「导出项目」和「导入项目」迁移。</p></li>
+        </ol>
+      </section>
     </section>
   );
 }
@@ -562,6 +618,7 @@ function SlicesView() {
                             <span className="moment-card__tag">{moment.tag}</span>
                           </header>
                           <p className="moment-card__text">{moment.text}</p>
+                          {moment.href && <a className="text-link moment-card__link" href={moment.href}>查看实验台 <span aria-hidden="true">↗</span></a>}
                           {moment.photos.length > 0 && <div className={`moment-photos${moment.photos.length === 1 ? ' moment-photos--single' : ''}`}>
                             {moment.photos.map((image, index) => (
                               <button key={image.src} type="button" onClick={() => setPhoto(image)} aria-label={`放大图片：${image.alt}`}>
@@ -603,7 +660,7 @@ function AboutView() {
         <div className="about-layout__story">
           <div className="about-layout__copy">
             <p>最初做这个网站，只是想做着玩。慢慢地，这里有了网页和实用工具，也有了短片、照片与生活记录。想做的东西，就试着做出来；想留住的瞬间，就放进这里。</p>
-            <p>现在的作品里，有动态短片《沉没成本》、安卓工具「张刀宋净化」、课程面板，还有这个不断变化的网站。「作品」放做出来的东西，「年轮」记下沿途的日常。</p>
+            <p>现在的作品里，有动态短片《沉没成本》、数字电路实验台、安卓工具「张刀宋净化」和课程面板。「作品」放做出来的东西，「年轮」记下沿途的日常。</p>
             <p>最近在练吉他，因为喜欢 h3R3 刘清云。最想学会弹唱的是《还是会想你》，现在还在慢慢练。</p>
             <p>之前想在无畏契约打上钻石，这个小目标已经完成了，现在是超凡一。</p>
           </div>
@@ -645,7 +702,8 @@ function CurrentView({ page, backPage, sharedEntering, isHomeActive }) {
   if (page === 'work-film') return <FilmDetail backPage={backPage} sharedEntering={sharedEntering} />;
   if (page === 'work-qingping') return <SoftwareDetail backPage={backPage} sharedEntering={sharedEntering} />;
   if (page === 'work-site') return <WorkDetail work={WORKS[2]} nextWork={WORKS[3]} backPage={backPage} sharedEntering={sharedEntering} />;
-  if (page === 'work-dashboard') return <WorkDetail work={WORKS[3]} nextWork={WORKS[0]} backPage={backPage} sharedEntering={sharedEntering} />;
+  if (page === 'work-dashboard') return <WorkDetail work={WORKS[3]} nextWork={WORKS[4]} backPage={backPage} sharedEntering={sharedEntering} />;
+  if (page === 'work-logic-lab') return <LogicLabDetail backPage={backPage} sharedEntering={sharedEntering} />;
   if (page === 'slices') return <SlicesView />;
   if (page === 'about') return <AboutView />;
   if (page === 'contact') return <ContactView />;

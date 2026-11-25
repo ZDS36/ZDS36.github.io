@@ -1,0 +1,3 @@
+# Preserve the exact HTML bytes used in the offline ZIP.
+public/tools/logic-lab/index.html -text -diff
+tools/logic-lab/index.html -text -diff

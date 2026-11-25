@@ -72,6 +72,8 @@ npm run promote
 
 「张刀宋净化」位于作品区第二项，介绍与下载页为 `#work-qingping`，涵盖功能、适用系统、安装配置、权限说明和使用限制。0.2.3 APK 与文字说明保存在 `public/downloads/zhangdaosong/`，通过原有 build / check / promote 流程同步到根目录 `downloads/zhangdaosong/`。校验会核对 APK 的已验证 SHA-256；签名私钥、手机数据和本地调试材料不进入网站。
 
+「数字电路实验台」的介绍页为 `#work-logic-lab`。更新时，将同一次构建的 HTML 和离线 ZIP 分别放入 `public/tools/logic-lab/index.html` 和 `public/downloads/logic-lab/logic-circuit-lab-beta.zip`。`npm run check` 会校验体验页和下载文件，`npm run promote` 会同步两个文件到 GitHub Pages 发布目录。可在本地预览后运行 `node scripts/check-logic-lab.mjs http://127.0.0.1:4175`，验证介绍入口、窄屏工具栏和在线计算。
+
 ## 浏览器回归
 
 先运行 `npm run preview -- --host 127.0.0.1 --port 4175 --strictPort`，再在另一终端运行：
