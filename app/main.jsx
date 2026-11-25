@@ -253,13 +253,6 @@ function ArrowLink({ href, children, className = '' }) {
 }
 
 function WorkVisual({ work, className = '' }) {
-  if (work.tone === 'logic') {
-    return (
-      <div className={`work-visual work-visual--logic ${className}`.trim()} data-work-visual={work.id} aria-hidden="true">
-        <img src={logicLabPreview} width="1300" height="820" alt="" loading="lazy" decoding="async" />
-      </div>
-    );
-  }
   return (
     <div className={`work-visual work-visual--${work.tone} ${className}`.trim()} data-work-visual={work.id} aria-hidden="true">
       <span className="work-visual__caption">{work.meta}</span>
@@ -267,8 +260,9 @@ function WorkVisual({ work, className = '' }) {
       <span className="work-visual__orbit" />
       <span className="work-visual__shape">
         {work.id === 'work-film' && <img src={FILM_POSTER} alt="" width="1600" height="900" />}
+        {work.tone === 'logic' && <img src={logicLabPreview} alt="" width="1300" height="820" loading="lazy" decoding="async" />}
       </span>
-      <span className="work-visual__note">{work.tone === 'blue' ? 'IDEAS IN BLOOM' : 'LESS, BUT BETTER'}</span>
+      <span className="work-visual__note">{work.tone === 'logic' ? 'DIGITAL LOGIC' : work.tone === 'blue' ? 'IDEAS IN BLOOM' : 'LESS, BUT BETTER'}</span>
       <strong className="work-visual__title">{work.title}</strong>
     </div>
   );
@@ -420,7 +414,7 @@ function LogicLabDetail({ backPage, sharedEntering }) {
           </div>
           <p className="logic-detail__note">ZIP 约 1 MB。解压后双击「数字电路实验台.html」，包内的「先读我.txt」有打开方式和教程入口。</p>
         </div>
-        <div className="work-visual work-visual--logic logic-detail__preview" data-work-visual={work.id}>
+        <div className="work-visual logic-detail__preview" data-work-visual={work.id}>
           <img src={logicLabPreview} width="1300" height="820" alt="实验台的三人表决示例，逻辑芯片和接线显示在中间，真值表在右侧" decoding="async" />
         </div>
       </header>

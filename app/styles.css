@@ -705,15 +705,19 @@ h1:focus, .site-main:focus { outline: none; }
 .app-boundaries details { min-width: 0; color: var(--faint); font-size: .75rem; }
 .app-boundaries summary { cursor: pointer; min-height: 44px; padding-block: .8rem; }
 .app-boundaries code { display: block; overflow-wrap: anywhere; line-height: 1.8; }
-.work-visual--logic { background: #dce9e9; border-color: var(--line); }
-.work-visual--logic::before { content: none; }
-.work-visual--logic img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.work-visual--logic { color: #183d42; background: radial-gradient(ellipse at 72% 32%, #d1e0db, transparent 66%), #b0c7c9; border-color: #8da8a8; }
+.work-visual--logic .work-visual__orbit { border-color: #39686b65; }
+.work-visual--logic .work-visual__shape { top: 17%; right: 13%; width: 58cqw; aspect-ratio: 1300 / 820; overflow: hidden; border: 1px solid #2d555a; border-radius: 2cqw; background: #e1eceb; box-shadow: 0 2cqw 5cqw #183d4240; transform: rotate(-8deg); }
+.work-visual--logic .work-visual__shape img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.work-visual--logic .work-visual__title { font-size: clamp(1.4rem, 9.25cqw, 6.5rem); letter-spacing: -.06em; }
+.work-visual--logic .work-visual__note { color: #264e51; }
 .logic-detail .logic-detail__hero { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.25fr); align-items: center; gap: clamp(1.5rem, 4vw, 3rem); margin-inline: 0; padding-bottom: clamp(2rem, 4vw, 3rem); }
 .logic-detail .logic-detail__hero > div:not(.work-visual) { display: block; padding: 0; }
 .logic-detail .logic-detail__hero .page-kicker { margin: 0 0 .75rem; }
 .logic-detail .logic-detail__hero h1 { font-size: clamp(2.2rem, 4.2vw, 4.1rem); }
-.logic-detail__preview { border-radius: .75rem; }
-.logic-detail__preview img { height: auto; }
+.logic-detail__preview { border-radius: .75rem; border-color: var(--line); background: #dce9e9; }
+.logic-detail__preview::before { content: none; }
+.logic-detail__preview img { display: block; width: 100%; height: auto; }
 .logic-detail__intro { max-width: 29rem; margin: 1rem 0 0; color: var(--muted); line-height: 1.85; }
 .logic-detail__actions { display: flex; align-items: stretch; flex-wrap: wrap; gap: .65rem; margin-top: 1.5rem; }
 .logic-detail__actions a { display: inline-flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 48px; padding: .6rem .9rem; border-radius: .45rem; }
