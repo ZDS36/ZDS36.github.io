@@ -16,7 +16,7 @@ const FILM_URL = '/media/sunk-cost/film.mp4?v=20261026-polished';
 const FILM_HTML_URL = '/media/sunk-cost/animation.html?v=20261026-polished';
 const FILM_POSTER = '/media/sunk-cost/poster.jpg?v=20261026-polished';
 const LOGIC_LAB_URL = '/tools/logic-lab/';
-const LOGIC_LAB_DOWNLOAD = '/downloads/logic-lab/logic-circuit-lab-beta.zip';
+const LOGIC_LAB_DOWNLOAD = '/downloads/logic-lab/logic-circuit-lab-beta.zip?v=guide-1';
 
 const PAGE_IDS = ['top', 'works', 'work-film', 'work-qingping', 'work-site', 'work-dashboard', 'work-logic-lab', 'slices', 'about', 'contact'];
 const CHAPTERS = ['top', 'works', 'slices', 'about', 'contact'];
@@ -435,7 +435,7 @@ function LogicLabDetail({ backPage, sharedEntering }) {
             <a className="app-download__button" href={LOGIC_LAB_URL}>打开实验台 <span aria-hidden="true">↗</span></a>
             <a className="logic-detail__download" href={LOGIC_LAB_DOWNLOAD} download>下载离线版 <span aria-hidden="true">↓</span></a>
           </div>
-          <p className="logic-detail__note">ZIP 约 1 MB。解压后用 Edge 打开里面的 HTML 文件即可离线使用。</p>
+          <p className="logic-detail__note">ZIP 约 1 MB。解压后双击「数字电路实验台.html」，包内的「先读我.txt」有打开方式和教程入口。</p>
         </div>
         <div className="work-visual work-visual--logic logic-detail__preview" data-work-visual={work.id}>
           <img src={logicLabPreview} width="1300" height="820" alt="实验台的三人表决示例，逻辑芯片和接线显示在中间，真值表在右侧" decoding="async" />
