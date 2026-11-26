@@ -411,8 +411,6 @@ try {
   await cover.hover();
   await cover.click();
   await settled('work-film');
-  const coverFrames = await page.locator('body > .work-visual').evaluate(el => el.getAnimations()[0].effect.getKeyframes());
-  assert(coverFrames.every(frame => frame.transform && !['left', 'top', 'width', 'height'].some(key => key in frame)), 'The work cover should move without laying out each frame.');
   await page.waitForFunction(() => !document.querySelector('body > .work-visual') && !document.querySelector('.work-visual--hidden'));
   assert.deepEqual(errors, [], 'Hover-to-detail transition reported errors.');
   console.log('Passed: cover artwork moves and enlarges on hover, returns on leave, and opens the detail without leftover overlays.');
@@ -433,6 +431,55 @@ try {
     await settled(route);
     await page.waitForFunction(() => !document.querySelector('body > .work-visual'));
   }
+  for (const width of [1366, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of ['work-qingping', 'work-site']) {
+      await navigate('works');
+      const card = page.locator(`.work-card[href="#${route}"]`);
+      const checkCover = async (destination) => {
+        const motion = await page.locator('body > .work-visual').evaluate(async (cover, { route, destination }) => {
+          const animations = cover.getAnimations({ subtree: true });
+          await Promise.all(animations.map(async animation => {
+            animation.pause();
+            await animation.ready;
+          }));
+          const duration = animations[0].effect.getTiming().duration;
+          const seek = fraction => animations.forEach(animation => { animation.currentTime = duration * fraction; });
+          const closestBox = node => {
+            const { x, y, width, height } = node.getBoundingClientRect();
+            return { x, y, width, height };
+          };
+          const shape = `[data-view="${destination}"] [data-work-visual="${route}"]`;
+          seek(0);
+          const start = closestBox(cover);
+          seek(.12);
+          const early = closestBox(cover);
+          seek(.5);
+          const resized = closestBox(cover);
+          const widthDelta = Math.abs(resized.width - cover.offsetWidth);
+          const heightDelta = Math.abs(resized.height - cover.offsetHeight);
+          seek(.84);
+          const end = closestBox(cover);
+          const target = closestBox(document.querySelector(shape));
+          animations.forEach(animation => animation.play());
+          return { start, early, end, target, widthDelta, heightDelta };
+        }, { route, destination });
+        const distance = (a, b) => Math.hypot(a.x-b.x,a.y-b.y,a.width-b.width,a.height-b.height);
+        assert.ok(motion.widthDelta < 1 && motion.heightDelta < 1, `${route} must resize its artwork without stretching it.`);
+        assert.ok(distance(motion.start,motion.early) < distance(motion.start,motion.end) * .25, `${route} must ease into the cover motion.`);
+        assert.ok(distance(motion.end,motion.target) < 2.5, `${route} must finish at the destination without a jump.`);
+        await page.locator('body > .work-visual').waitFor({ state: 'detached' });
+      };
+      await card.click();
+      await settled(route);
+      await checkCover(route);
+      await page.locator(`[data-view="${route}"] .back-link-v2`).click();
+      await settled('works');
+      await checkCover('works');
+    }
+  }
+  await page.setViewportSize({ width: 1366, height: 900 });
+  console.log('Passed: software and site covers ease in, resize without stretching, and land smoothly in both directions.');
   const light = page.locator('.aurora--blue');
   await page.mouse.move(100, 100);
   await page.waitForFunction(() => !document.getAnimations().some(a => a.transitionProperty === 'transform' && a.playState === 'running'));

@@ -754,27 +754,35 @@ function App() {
       if ((enteringWork || returning) && animate) {
         const workId = enteringWork ? nextPage : oldPage;
         const source = main.querySelector(`[data-view="${oldPage}"] [data-work-visual="${workId}"]`);
-        if (source && visualInViewport(source) && logicNavigation) {
-          const preview=captureLogicPreview(source,enteringWork);
-          if (preview) pendingRef.current={preview,toPage:nextPage,workId};
-        } else if (source && visualInViewport(source)) {
-          const rect = source.getBoundingClientRect();
-          const overlay = source.cloneNode(true);
-          const shape = source.querySelector('.work-visual__shape');
-          if (shape) overlay.querySelector('.work-visual__shape').style.transform = getComputedStyle(shape).transform;
-          Object.assign(overlay.style, {
-            position: 'fixed', left: `${rect.left}px`, top: `${rect.top}px`,
-            width: `${rect.width}px`, height: `${rect.height}px`, zIndex: '1000',
-            pointerEvents: 'none', transformOrigin: 'top left'
-          });
-          overlay.setAttribute('aria-hidden', 'true');
-          document.body.append(overlay);
-          pendingRef.current = { overlay, from: rect, toPage: nextPage, workId };
+        if (source && visualInViewport(source)) {
+          if (logicNavigation) {
+            const preview = captureLogicPreview(source, enteringWork);
+            if (preview) pendingRef.current = { preview, toPage: nextPage, workId };
+          } else {
+            const from = source.getBoundingClientRect();
+            const sourceStyle = getComputedStyle(source);
+            const fromBorder = {
+              borderRadius: sourceStyle.borderRadius, borderWidth: sourceStyle.borderWidth, borderColor: sourceStyle.borderColor
+            };
+            const overlay = source.cloneNode(true);
+            const shape = source.querySelector('.work-visual__shape');
+            if (shape) overlay.querySelector('.work-visual__shape').style.transform = getComputedStyle(shape).transform;
+            Object.assign(overlay.style, {
+              position: 'fixed', left: `${from.left}px`, top: `${from.top}px`,
+              width: `${from.width}px`, height: `${from.height}px`, zIndex: '1000',
+              pointerEvents: 'none', contain: 'layout paint', borderStyle: 'solid', ...fromBorder
+            });
+            overlay.inert = true;
+            overlay.setAttribute('aria-hidden', 'true');
+            document.body.append(overlay);
+            pendingRef.current = { overlay, from, fromBorder, toPage: nextPage, workId };
+          }
         }
       }
       pageRef.current = nextPage;
       setPage(nextPage);
-      setNavigation({ page: nextPage, focus: true, animate: animate && !isFromWork && !isToWork, direction,
+      setNavigation({ page: nextPage, focus: true, animate: animate && !logicNavigation,
+        blur: !isFromWork && !isToWork, direction,
         restore: returning ? originRef.current.scroll : null });
     };
     const navigate = (nextPage, animate, direction) => {
@@ -903,19 +911,19 @@ function App() {
       section.style.setProperty('--tab-shift', `${navigation.direction * 18}px`);
       section.classList.add('is-tab-arriving');
     }
-    // Replay the existing paper arrival only for explicitly selected chapters.
+    // A shared cover has its own motion. Other work links can use the paper arrival without the fullscreen blur.
+    const pending = pendingRef.current;
     section.classList.remove('is-arriving');
-    if (navigation.animate) {
+    if (navigation.animate && !pending) {
       void section.offsetWidth;
       section.classList.add('is-arriving');
-      if (typeof maskRef.current.animate === 'function') {
+      if (navigation.blur && typeof maskRef.current.animate === 'function') {
         maskAnimation.current = maskRef.current.animate([
           { backdropFilter: 'blur(10px)', opacity: 1 },
           { backdropFilter: 'blur(0px)', opacity: 0 }
         ], { duration: 620, easing: 'cubic-bezier(.2, .65, .3, 1)' });
       }
     }
-    const pending = pendingRef.current;
     if (!pending || pending.toPage !== navigation.page) return;
     pendingRef.current = null;
     const target = section.querySelector(`[data-work-visual="${pending.workId}"]`);
@@ -937,29 +945,47 @@ function App() {
       return;
     }
     const to = target.getBoundingClientRect();
+    const targetStyle = getComputedStyle(target);
     target.classList.add('work-visual--hidden');
-    let animation;
+    const animations = [];
+    const cleanup = () => {
+      pending.overlay.remove();
+      target.classList.remove('work-visual--hidden');
+      for (const animation of animations) animation.cancel();
+    };
     try {
-      const timing = { duration: 700, easing: 'cubic-bezier(.22, .68, .3, 1)', fill: 'forwards' };
-      const shape = pending.overlay.querySelector('.work-visual__shape');
+      const { overlay, from, fromBorder } = pending;
+      const timing = { duration: 700, fill: 'both' };
+      const handoff = .84;
+      const move = (element, start, end) => element.animate([
+        { ...start, easing: 'cubic-bezier(.36, .06, .23, 1)' }, { ...end, offset: handoff }, end
+      ], timing);
+      animations.push(move(overlay,
+        { width: `${from.width}px`, height: `${from.height}px`, ...fromBorder, transform: 'translate3d(0, 0, 0)' },
+        { width: `${to.width}px`, height: `${to.height}px`,
+          borderRadius: targetStyle.borderRadius, borderWidth: targetStyle.borderWidth, borderColor: targetStyle.borderColor,
+          transform: `translate3d(${to.left - from.left}px, ${to.top - from.top}px, 0)` }
+      ));
+      const shape = overlay.querySelector('.work-visual__shape');
       const targetShape = target.querySelector('.work-visual__shape');
       if (shape && targetShape) {
-        shape.animate([{ transform: shape.style.transform }, { transform: getComputedStyle(targetShape).transform }], timing);
+        animations.push(move(shape, { transform: shape.style.transform }, { transform: getComputedStyle(targetShape).transform }));
       }
-      animation = pending.overlay.animate([
-        { transform: 'translate3d(0,0,0) scale(1)' },
-        { transform: `translate3d(${to.left - pending.from.left}px,${to.top - pending.from.top}px,0) scale(${to.width / pending.from.width},${to.height / pending.from.height})` }
-      ], timing);
+      // Show the real cover under the moving copy before fading the copy out at the end.
+      animations.push(target.animate([
+        { visibility: 'hidden', offset: 0, easing: 'steps(1, end)' },
+        { visibility: 'visible', offset: handoff },
+        { visibility: 'visible', offset: 1 }
+      ], timing));
+      animations.push(overlay.animate([
+        { opacity: 1, offset: 0 }, { opacity: 1, offset: handoff, easing: 'ease-in-out' },
+        { opacity: 0, offset: 1 }
+      ], timing));
     } catch {
-      target.classList.remove('work-visual--hidden');
-      pending.overlay.remove();
+      cleanup();
       return;
     }
-    const cleanup = () => {
-      target.classList.remove('work-visual--hidden');
-      pending.overlay.remove();
-      animation.cancel();
-    };
+    const [animation] = animations;
     const active = { animation, target, to, cleanup };
     activeRef.current = active;
     animation.onfinish = () => {
