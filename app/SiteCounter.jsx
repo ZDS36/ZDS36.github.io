@@ -1,6 +1,8 @@
 import React, { useSyncExternalStore } from 'react';
 
-const endpoint = import.meta.env.VITE_SITE_STATS_ENDPOINT?.trim();
+const endpoint = import.meta.env.DEV || location.origin === 'https://zds36.github.io'
+  ? import.meta.env.VITE_SITE_STATS_ENDPOINT?.trim()
+  : undefined;
 const formatNumber = new Intl.NumberFormat('zh-CN');
 const listeners = new Set();
 let total = null;
@@ -17,7 +19,7 @@ async function record(event) {
   try {
     const url = new URL(endpoint);
     url.searchParams.set('event', event);
-    const response = await fetch(url, { method: 'POST', keepalive: true, credentials: 'omit' });
+    const response = await fetch(url, { method: 'POST', keepalive: true, credentials: 'omit', signal: AbortSignal.timeout?.(8000) });
     if (!response.ok) return;
     const result = await response.json();
     // Rapid clicks can finish out of order. Keep the newest cumulative value.
@@ -45,7 +47,7 @@ export function startSiteCounter(root) {
 }
 
 export function countHomeClick(event) {
-  if (event.button !== (event.type === 'auxclick' ? 1 : 0)) return;
+  if (!event.isTrusted || event.button !== (event.type === 'auxclick' ? 1 : 0)) return;
   if (event.target.closest('a[data-home-click]')) void record('click');
 }
 

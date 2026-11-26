@@ -23,6 +23,7 @@ export default function PrivateMessage() {
   useEffect(() => {
     if (!configured) return;
     let active = true;
+    let script;
     const failed = () => { if (active) setVerification('error'); };
     // The load event handles async scripts; Turnstile.ready() rejects async/defer loading.
     const render = () => {
@@ -36,21 +37,32 @@ export default function PrivateMessage() {
         });
       } catch { failed(); }
     };
-    let script = document.getElementById('message-turnstile');
-    if (!script) {
-      script = document.createElement('script');
-      script.id = 'message-turnstile';
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-      script.async = true;
-      document.head.appendChild(script);
-    }
-    if (window.turnstile) render();
-    else script.addEventListener('load', render);
-    script.addEventListener('error', failed);
+    const load = () => {
+      script = document.getElementById('message-turnstile');
+      if (!script) {
+        script = document.createElement('script');
+        script.id = 'message-turnstile';
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        script.async = true;
+        document.head.appendChild(script);
+      }
+      if (window.turnstile) render();
+      else script.addEventListener('load', render);
+      script.addEventListener('error', failed);
+    };
+    const form = challenge.current.closest('form');
+    const observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => {
+      if (!active || !entries.some(entry => entry.isIntersecting)) return;
+      observer.disconnect();
+      load();
+    }, { root: form.closest('.site-main'), rootMargin: '320px 0px' }) : null;
+    if (observer) observer.observe(form);
+    else load();
     return () => {
       active = false;
-      script.removeEventListener('load', render);
-      script.removeEventListener('error', failed);
+      observer?.disconnect();
+      script?.removeEventListener('load', render);
+      script?.removeEventListener('error', failed);
       if (widget.current !== null) window.turnstile.remove(widget.current);
       widget.current = null;
     };

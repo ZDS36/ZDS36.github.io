@@ -26,7 +26,7 @@ test('mail uses hostname TLS, keeps the recipient fixed and closes after connect
         assert.equal(socket.secured, true);
         assert.equal(message.to, 'owner@example.com');
         assert.equal(message.from.address, message.to);
-        assert.equal(message.replyTo, 'visitor@example.com');
+        assert.deepEqual(message.replyTo, { address: 'visitor@example.com' });
         assert.equal(message.messageId, '<stable-test-id@zds36.github.io>');
       },
       close() { closed++; }

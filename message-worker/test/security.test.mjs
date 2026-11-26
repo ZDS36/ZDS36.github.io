@@ -33,6 +33,7 @@ function fixture() {
   const env = {
     ALLOWED_ORIGIN: 'https://zds36.github.io', TURNSTILE_SECRET: 'test-only-captcha-secret',
     SMTP_USER: 'owner@example.com', SMTP_PASSWORD: 'test-only-mail-secret', IP_HASH_SECRET: 'test-only-ip-hash-secret-not-a-real-key',
+    MESSAGE_REQUEST_LIMIT: { limit: async () => ({ success: true }) },
     MESSAGE_BUDGET: {
       idFromName: name => name,
       get: () => ({ fetch(request) {
@@ -48,9 +49,10 @@ function fixture() {
       } })
     }
   };
-  const request = (overrides = {}) => {
+  const request = (overrides = {}, fields = {}) => {
     const data = new FormData();
     data.set('name', 'Visitor'); data.set('message', 'Hello'); data.set('cf-turnstile-response', 'test-only-token');
+    for (const [key, value] of Object.entries(fields)) data.set(key, value);
     return new Request('https://example.workers.dev/message', {
       method: 'POST', body: data,
       headers: { Origin: env.ALLOWED_ORIGIN, 'CF-Connecting-IP': '192.0.2.10', ...overrides }
@@ -77,6 +79,13 @@ test('trust boundaries, token binding, durable acceptance without waiting for SM
   assert.equal((await handleMessage(f.request({ Origin: 'https://untrusted.example' }), f.env)).status, 403);
   assert.equal((await handleMessage(f.request({ 'CF-Connecting-IP': '' }), f.env)).status, 400);
   assert.equal((await handleMessage(f.request({ 'Content-Length': '20000' }), f.env)).status, 413);
+  assert.equal((await handleMessage(f.request({ 'Content-Type': 'application/json' }), f.env)).status, 415);
+  assert.equal((await handleMessage(f.request({ 'Content-Type': 'multipart/form-data' }), f.env)).status, 400);
+  assert.equal((await handleMessage(f.request({}, { email: 'name,visitor@example.com' }), f.env)).status, 400);
+  const throttled = await handleMessage(f.request(), { ...f.env, MESSAGE_REQUEST_LIMIT: { limit: async () => ({ success: false }) } });
+  assert.equal(throttled.status, 429);
+  assert.equal((await throttled.json()).code, 'request_limit');
+  assert.equal(upstream.length, 0, 'Rejected requests must not reach Turnstile.');
   assert.equal((await handleMessage(f.request(), { ...f.env, SMTP_PASSWORD: '' })).status, 503);
   for (const invalid of [
     { success: false }, { ...verification, hostname: 'other.example' }, { ...verification, action: 'other' }

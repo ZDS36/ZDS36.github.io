@@ -2,7 +2,9 @@ import { DurableObject } from 'cloudflare:workers';
 import { handleMessage } from './handler.mjs';
 import { reserveQuota } from './quota.mjs';
 import { sendMail } from './mail.mjs';
-import { deliverNext } from './outbox.mjs';
+import { deliverNext, OUTBOX_PREFIX } from './outbox.mjs';
+
+const OUTBOX_CAPACITY = 100;
 
 export class MessageBudget extends DurableObject {
   async fetch(request) {
@@ -16,9 +18,13 @@ export class MessageBudget extends DurableObject {
     const decision = await this.ctx.storage.transaction(async tx => {
       const result = reserveQuota(await tx.get('budget'), key, now);
       if (result.next) {
+        if ((await tx.list({ prefix: OUTBOX_PREFIX, limit: OUTBOX_CAPACITY })).size >= OUTBOX_CAPACITY) {
+          return { code: 'unavailable' };
+        }
         await tx.put('budget', result.next);
-        await tx.put(`outbox:${now}:${id}`, { ...message, id, attempts: 0 });
-        if (await tx.getAlarm() === null) await tx.setAlarm(now + 1000);
+        await tx.put(`${OUTBOX_PREFIX}${now}:${id}`, { ...message, id, attempts: 0 });
+        const alarm = await tx.getAlarm();
+        if (alarm === null || alarm > now + 1000) await tx.setAlarm(now + 1000);
       }
       return result.next ? { ok: true } : result;
     });

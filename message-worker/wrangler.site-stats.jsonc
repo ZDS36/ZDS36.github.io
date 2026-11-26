@@ -10,6 +10,7 @@
     "ALLOWED_ORIGIN": "https://zds36.github.io",
     "HISTORICAL_CLICKS": 1256
   },
+  "ratelimits": [{ "name": "SITE_STATS_LIMIT", "namespace_id": "26261101", "simple": { "limit": 90, "period": 60 } }],
   "durable_objects": {
     "bindings": [{ "name": "SITE_STATS", "class_name": "SiteStats" }]
   },

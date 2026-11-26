@@ -33,7 +33,7 @@ export async function sendMail(env, { name, email, message, id }) {
     await transport.sendMail({
       ...(id && { messageId: `<${id}@zds36.github.io>` }),
       from: { name: '未定态留言', address: env.SMTP_USER }, to: env.SMTP_USER,
-      ...(email && { replyTo: email }), subject: '未定态 · 收到一段私密留言',
+      ...(email && { replyTo: { address: email } }), subject: '未定态 · 收到一段私密留言',
       text: `称呼：${name || '未填写'}\n回复邮箱：${email || '未填写'}\n\n${message}`
     });
   } finally { transport.close(); }

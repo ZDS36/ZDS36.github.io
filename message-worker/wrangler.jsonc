@@ -8,6 +8,7 @@
   "preview_urls": false,
   "observability": { "enabled": false },
   "vars": { "ALLOWED_ORIGIN": "https://zds36.github.io" },
+  "ratelimits": [{ "name": "MESSAGE_REQUEST_LIMIT", "namespace_id": "26261102", "simple": { "limit": 18, "period": 60 } }],
   "durable_objects": {
     "bindings": [{ "name": "MESSAGE_BUDGET", "class_name": "MessageBudget" }]
   },
