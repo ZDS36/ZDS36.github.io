@@ -29,6 +29,32 @@ const weatherForecast = {
 const browser = await chromium.launch({ headless: true, chromiumSandbox: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
 
 try {
+  for (const [start, destination, width] of [
+    ['top', 'works', 1440], ['works', 'slices', 390], ['slices', 'about', 1440], ['about', 'contact', 390],
+  ]) {
+    const coldPage = await browser.newPage({ viewport: { width, height: 844 }, hasTouch: width === 390 });
+    await coldPage.route('**/*', route => new URL(route.request().url()).origin === base.origin ? route.continue() : route.abort());
+    await coldPage.addInitScript(() => {
+      Math.random = () => .99;
+      window.addEventListener('click', () => {
+        window.firstNavigation = {
+          hash: location.hash,
+          cinematic: !!document.querySelector('.ink-nav, .paper-tear, .paper-shred-layer')
+        };
+      }, { once: true });
+    });
+    await coldPage.goto(new URL(`/#${start}`, base).href);
+    const link = coldPage.locator(`.site-header a[href="#${destination}"]`);
+    if (width === 390) await link.tap();
+    else await link.click();
+    assert.deepEqual(await coldPage.evaluate(() => window.firstNavigation), {
+      hash: `#${destination}`, cinematic: false
+    }, 'The first header navigation should commit during the click without waiting on a snapshot.');
+    await coldPage.waitForFunction(destination => document.activeElement === document.querySelector(`[data-view="${destination}"] h1`), destination);
+    await coldPage.close();
+  }
+  console.log('Passed: the first header click or tap reaches its chapter without waiting for a cinematic snapshot.');
+
   const context = await browser.newContext({ viewport: { width: 1366, height: 768 }, serviceWorkers: 'block' });
   const errors = [];
   const externalRequests = [];
@@ -78,7 +104,8 @@ try {
     }
     window.navigationFrames = { checked: 0, failures: [] };
     const checkFrame = () => {
-      const view = document.querySelector('[data-view]');
+      const view = document.getElementById('main-content')
+        ?.querySelector(':scope > [data-view], :scope > .archive:not([hidden]) > [data-view]');
       if (view) {
         window.navigationFrames.checked++;
         for (let node = view; node; node = node.parentElement) {
@@ -384,6 +411,8 @@ try {
   await cover.hover();
   await cover.click();
   await settled('work-film');
+  const coverFrames = await page.locator('body > .work-visual').evaluate(el => el.getAnimations()[0].effect.getKeyframes());
+  assert(coverFrames.every(frame => frame.transform && !['left', 'top', 'width', 'height'].some(key => key in frame)), 'The work cover should move without laying out each frame.');
   await page.waitForFunction(() => !document.querySelector('body > .work-visual') && !document.querySelector('.work-visual--hidden'));
   assert.deepEqual(errors, [], 'Hover-to-detail transition reported errors.');
   console.log('Passed: cover artwork moves and enlarges on hover, returns on leave, and opens the detail without leftover overlays.');

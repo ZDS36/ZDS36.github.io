@@ -3,6 +3,7 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { coverProgress } from '../app/logic-preview-transition.js';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
@@ -13,7 +14,7 @@ const expectedZip = await readFile(new URL('../public/downloads/logic-lab/logic-
 const browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' });
 
 async function checkPreviewMotion(page,reverse) {
-  const motion=await page.locator('.logic-preview-picture').evaluate(async (picture,reverse)=>{
+  const motion=await page.locator('.logic-preview-picture').evaluate(async (picture,{reverse,coverProgress})=>{
     const animation=picture.getAnimations()[0];
     animation.pause();
     await animation.ready;
@@ -23,7 +24,7 @@ async function checkPreviewMotion(page,reverse) {
     const cover=picture.previousElementSibling.getBoundingClientRect().toJSON();
     animation.currentTime=0;
     const from=size();
-    animation.currentTime=duration*(reverse?1-frames[1].offset:frames[1].offset);
+    animation.currentTime=duration*(reverse?1-coverProgress:coverProgress);
     const middle=size();
     animation.currentTime=duration-.1;
     const to=size();
@@ -32,8 +33,9 @@ async function checkPreviewMotion(page,reverse) {
     const target=element.getBoundingClientRect().toJSON();
     const hidden=getComputedStyle(element.closest('.work-visual')).visibility==='hidden';
     animation.play();
-    return {from,middle,to,target,cover,hidden,layoutKeys:frames.some(frame=>['left','top','width','height'].some(key=>key in frame))};
-  },reverse);
+    return {from,middle,to,target,cover,hidden,duration,layoutKeys:frames.some(frame=>['left','top','width','height'].some(key=>key in frame))};
+  },{reverse,coverProgress});
+  assert.ok(motion.duration>=(reverse?600:700),'Allow time to see both parts of the cover motion.');
   assert.equal(motion.layoutKeys,false,'Animate the screenshot using transforms only.');
   assert.equal(motion.hidden,true,'Reveal the real frame once the moving screenshot has reached it.');
   const {middle,cover,to,target,from}=motion;

@@ -1,5 +1,28 @@
 const coverFrame='.work-visual__shape';
-const coverProgress=.36;
+export const coverProgress=.44;
+
+function previewFrames(card, fill, detail, transform) {
+  const keys=Object.keys(card);
+  const velocity=Object.fromEntries(keys.map(key=>{
+    const before=(fill[key]-card[key])/coverProgress;
+    const after=(detail[key]-fill[key])/(1-coverProgress);
+    return [key,before*after>0?2*before*after/(before+after):0];
+  }));
+  const steps=12;
+  // Both halves share the same velocity at the full-cover pose.
+  return Array.from({length:steps*2+1},(_,i)=>{
+    const first=i<=steps;
+    const t=(first?i:i-steps)/steps;
+    const start=first?card:fill, end=first?fill:detail;
+    const span=first?coverProgress:1-coverProgress;
+    const blend=t*t*(3-2*t);
+    const tangent=first?t*t*(t-1):t*(1-t)*(1-t);
+    const pose=Object.fromEntries(keys.map(key=>[
+      key,start[key]+(end[key]-start[key])*blend+velocity[key]*span*tangent
+    ]));
+    return {transform:transform(pose),offset:(first?0:coverProgress)+span*t};
+  });
+}
 
 function imagePose(image, frame) {
   const rect=image.getBoundingClientRect();
@@ -53,7 +76,7 @@ export function playLogicPreview(capture, target, viewport) {
   Object.assign(preview.style,{width:detail.width+'px',height:detail.height+'px'});
   const transform=({x,y,width,height,rotation})=>
     `translate3d(${x-bounds.left-detail.width/2}px,${y-bounds.top-detail.height/2}px,0) rotate(${rotation}rad) scale(${width/detail.width},${height/detail.height})`;
-  const timing={duration:entering?440:360,direction:entering?'normal':'reverse',fill:'both'};
+  const timing={duration:entering?720:620,direction:entering?'normal':'reverse',fill:'both'};
   const previousTransform=frame?.style.transform;
   if (frame) frame.style.transform=getComputedStyle(frame).transform;
   const animations=[];
@@ -67,17 +90,15 @@ export function playLogicPreview(capture, target, viewport) {
   document.body.append(overlay);
   target.classList.add('work-visual--hidden');
   try {
-    animations.push(preview.animate([
-      {transform:transform(card),offset:0,easing:'cubic-bezier(.2,.54,.5,1)'},
-      {transform:transform(fill),offset:coverProgress,easing:'cubic-bezier(.24,.4,.31,1)'},
-      {transform:transform(detail),offset:1}
-    ],timing));
+    animations.push(preview.animate(previewFrames(card,fill,detail,transform),timing));
     animations.push(decoration.animate([
-      {opacity:1,offset:0},{opacity:1,offset:coverProgress},{opacity:0,offset:.65},{opacity:0,offset:1}
+      {opacity:1,offset:0},{opacity:1,offset:coverProgress,easing:'ease-in-out'},
+      {opacity:0,offset:.72},{opacity:0,offset:1}
     ],timing));
     const copy=entering&&target.previousElementSibling;
     if (copy) animations.push(copy.animate([
-      {opacity:.2,offset:0},{opacity:.2,offset:.2},{opacity:1,offset:.76},{opacity:1,offset:1}
+      {opacity:.2,offset:0},{opacity:.2,offset:.2,easing:'ease-in-out'},
+      {opacity:1,offset:.82},{opacity:1,offset:1}
     ],timing));
     return {animation:animations[0],target,to:target.getBoundingClientRect(),cleanup};
   } catch {

@@ -252,6 +252,12 @@ h1:focus, .site-main:focus { outline: none; }
 .work-visual__orbit::after { content: ""; position: absolute; top: 15%; right: 14%; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 18px #d4ef8670; }
 .work-visual__note { position: absolute; right: 6cqw; bottom: 7cqw; color: #d5dcca; font: .55rem/1.6 var(--mono); writing-mode: vertical-rl; letter-spacing: .18em; }
 .work-visual--hidden { visibility: hidden; }
+
+/* Keep offscreen project sections out of the first detail layout. */
+.film-story, .film-stills, .film-making, .app-features, .app-guide, .app-boundaries {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 360px;
+}
 .featured-work__copy { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .8rem; padding: clamp(.85rem, 2vw, 1.65rem); }
 .featured-work__copy h2 { margin: .35rem 0 0; font: clamp(1.45rem, 2.5vw, 2rem)/1.2 var(--display-font); }
 .featured-work__copy p { margin: 0; color: var(--film-accent); font-size: .78rem; letter-spacing: .06em; }

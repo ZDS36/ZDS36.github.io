@@ -709,6 +709,7 @@ function App() {
     const oldRestoration = history.scrollRestoration;
     let activeNavigation = null;
     let lastNavigationClick = -Infinity;
+    let hasAnimatedTab = false;
     history.scrollRestoration = 'manual';
     const cancelNavigationPlayback = (active = activeNavigation) => {
       if (!active || active.canceled) return;
@@ -741,11 +742,13 @@ function App() {
       const oldPage = pageRef.current;
       const logicNavigation = involvesLogicLab(oldPage, nextPage);
       clearTransition();
-      const enteringWork = !oldPage.startsWith('work-') && nextPage.startsWith('work-');
-      const returning = oldPage.startsWith('work-') && originRef.current?.workId === oldPage && originRef.current.page === nextPage;
+      const isFromWork = oldPage.startsWith('work-');
+      const isToWork = nextPage.startsWith('work-');
+      const enteringWork = !isFromWork && isToWork;
+      const returning = isFromWork && originRef.current?.workId === oldPage && originRef.current.page === nextPage;
       if (enteringWork) {
         originRef.current = { page: oldPage, workId: nextPage, scroll: main.scrollTop };
-      } else if (oldPage.startsWith('work-') && nextPage.startsWith('work-')) {
+      } else if (isFromWork && isToWork) {
         originRef.current = null;
       }
       if ((enteringWork || returning) && animate) {
@@ -761,7 +764,8 @@ function App() {
           if (shape) overlay.querySelector('.work-visual__shape').style.transform = getComputedStyle(shape).transform;
           Object.assign(overlay.style, {
             position: 'fixed', left: `${rect.left}px`, top: `${rect.top}px`,
-            width: `${rect.width}px`, height: `${rect.height}px`, zIndex: '1000', pointerEvents: 'none'
+            width: `${rect.width}px`, height: `${rect.height}px`, zIndex: '1000',
+            pointerEvents: 'none', transformOrigin: 'top left'
           });
           overlay.setAttribute('aria-hidden', 'true');
           document.body.append(overlay);
@@ -770,33 +774,37 @@ function App() {
       }
       pageRef.current = nextPage;
       setPage(nextPage);
-      setNavigation({ page: nextPage, focus: true, animate: animate && !logicNavigation, direction,
+      setNavigation({ page: nextPage, focus: true, animate: animate && !isFromWork && !isToWork, direction,
         restore: returning ? originRef.current.scroll : null });
     };
     const navigate = (nextPage, animate, direction) => {
       if (location.hash !== `#${nextPage}`) history.pushState(null, '', `#${nextPage}`);
       syncPage(animate, direction);
     };
-    const openWithTransition = (nextPage, link) => {
+    const openWithTransition = (nextPage, link, trusted) => {
       if (activeNavigation?.toPage === nextPage) return;
       const context = { stage, main, link };
       const logicNavigation = involvesLogicLab(pageRef.current, nextPage);
       const canAnimate = pageRef.current !== nextPage && !reducedMotion.matches && !document.hidden
         && !root.classList.contains('theme-reveal') && !logicNavigation;
-      const direction = canAnimate && link.closest('.primary-nav')
+      const direction = canAnimate
         ? Math.sign(CHAPTERS.indexOf(nextPage) - CHAPTERS.indexOf(chapterFor(pageRef.current)))
         : 0;
       const now = performance.now();
       // Keep quick clicks responsive while the 400 ms tab motion is still settling.
       const quickSwitch = activeNavigation || now - lastNavigationClick < 400;
+      const firstTab = canAnimate && !hasAnimatedTab;
+      if (canAnimate) hasAnimatedTab = true;
       if (canAnimate || activeNavigation) lastNavigationClick = now;
-      const effect = canAnimate && !quickSwitch ? pickNavigationTransition(context) : null;
+      // Enter the first chapter immediately, before creating a snapshot or audio context.
+      const effect = canAnimate && !firstTab && !quickSwitch ? pickNavigationTransition(context) : null;
       if (!effect) {
         stopNavigationTransition();
         navigate(nextPage, logicNavigation && !reducedMotion.matches && !document.hidden, direction);
         return;
       }
 
+      if (trusted) unlockNavigationAudio();
       const active = { toPage: nextPage, effect: null, committed: false, canceled: false, stopSound: null };
       activeNavigation = active;
       context.playSound = () => {
@@ -829,8 +837,7 @@ function App() {
       if (!PAGE_IDS.includes(nextPage)) return;
       event.preventDefault();
       if (link.closest('.site-header')) {
-        if (event.isTrusted && pageRef.current !== nextPage && !reducedMotion.matches) unlockNavigationAudio();
-        openWithTransition(nextPage, link);
+        openWithTransition(nextPage, link, event.isTrusted);
       } else {
         stopNavigationTransition();
         navigate(nextPage);
@@ -940,8 +947,8 @@ function App() {
         shape.animate([{ transform: shape.style.transform }, { transform: getComputedStyle(targetShape).transform }], timing);
       }
       animation = pending.overlay.animate([
-        { left: `${pending.from.left}px`, top: `${pending.from.top}px`, width: `${pending.from.width}px`, height: `${pending.from.height}px` },
-        { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` }
+        { transform: 'translate3d(0,0,0) scale(1)' },
+        { transform: `translate3d(${to.left - pending.from.left}px,${to.top - pending.from.top}px,0) scale(${to.width / pending.from.width},${to.height / pending.from.height})` }
       ], timing);
     } catch {
       target.classList.remove('work-visual--hidden');
@@ -1014,7 +1021,7 @@ function App() {
     };
   }, [isDetail, navigation.page]);
 
-  const hasRetainedArchive = navigation.page === 'work-logic-lab' && originRef.current?.workId === navigation.page;
+  const hasRetainedArchive = isDetail && originRef.current?.workId === navigation.page;
   const sharedPage = pendingRef.current?.overlay && pendingRef.current.toPage;
   return (
     <div className="app-shell">

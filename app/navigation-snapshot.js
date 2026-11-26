@@ -33,7 +33,7 @@ export function cloneVisibleMain(main) {
   };
 
   const copy = main.cloneNode(false);
-  const content = main.firstElementChild;
+  const content = main.querySelector(':scope > :not([hidden])');
   if (content.classList.contains('archive')) {
     const archive = content.cloneNode(false);
     for (const section of content.children) {
