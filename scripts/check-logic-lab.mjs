@@ -12,6 +12,39 @@ await mkdir(evidence, { recursive: true });
 const expectedZip = await readFile(new URL('../public/downloads/logic-lab/logic-circuit-lab-beta.zip', import.meta.url));
 const browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' });
 
+async function checkPreviewMotion(page,reverse) {
+  const motion=await page.locator('.logic-preview-picture').evaluate(async (picture,reverse)=>{
+    const animation=picture.getAnimations()[0];
+    animation.pause();
+    await animation.ready;
+    const frames=animation.effect.getKeyframes();
+    const duration=animation.effect.getTiming().duration;
+    const size=()=>picture.getBoundingClientRect().toJSON();
+    const cover=picture.previousElementSibling.getBoundingClientRect().toJSON();
+    animation.currentTime=0;
+    const from=size();
+    animation.currentTime=duration*(reverse?1-frames[1].offset:frames[1].offset);
+    const middle=size();
+    animation.currentTime=duration-.1;
+    const to=size();
+    const selector=reverse?'.work-card--logic .work-visual__shape img':'.logic-detail__preview img';
+    const element=document.querySelector(selector);
+    const target=element.getBoundingClientRect().toJSON();
+    const hidden=getComputedStyle(element.closest('.work-visual')).visibility==='hidden';
+    animation.play();
+    return {from,middle,to,target,cover,hidden,layoutKeys:frames.some(frame=>['left','top','width','height'].some(key=>key in frame))};
+  },reverse);
+  assert.equal(motion.layoutKeys,false,'Animate the screenshot using transforms only.');
+  assert.equal(motion.hidden,true,'Reveal the real frame once the moving screenshot has reached it.');
+  const {middle,cover,to,target,from}=motion;
+  assert.ok(middle.left<=cover.left+1&&middle.top<=cover.top+1&&middle.right>=cover.right-1&&middle.bottom>=cover.bottom-1, 'The expanded screenshot must cover the original artwork.');
+  assert.ok(['x','y','width','height'].every(key=>Math.abs(to[key]-target[key])<=2.5),'The moving screenshot must meet its destination at its actual size.');
+  assert.ok(reverse?from.width>to.width:to.width>from.width,'The screenshot must expand on entry and shrink on return.');
+  assert.equal(await page.locator('.chapter-mask').evaluate(mask=>mask.getAnimations().length),0,'The works transition must not blur the entire page.');
+  await page.locator('.logic-preview-transition').waitFor({state:'detached'});
+  assert.equal(await page.locator('.work-visual--hidden').count(),0,'The destination must be revealed after the animation.');
+}
+
 try {
   for (const width of [1440, 1024, 820, 768, 390, 320]) {
     const mobile = width <= 390;
@@ -43,26 +76,32 @@ try {
       const [download] = await Promise.all([page.waitForEvent('download'), detail.getByRole('link', { name: '下载离线版' }).click()]);
       assert.equal(download.suggestedFilename(), 'logic-circuit-lab-beta.zip');
       assert.ok((await readFile(await download.path())).equals(expectedZip), 'ZIP differs from the checked release.');
+    }
+    if ([1440,768,390,320].includes(width)) {
       await detail.getByRole('link', { name: '返回作品' }).click();
       await page.emulateMedia({ reducedMotion: 'no-preference' });
       const card = page.locator('.work-card[href="#work-logic-lab"]');
       await card.scrollIntoViewIfNeeded();
+      await card.locator('img').evaluate(image=>image.decode());
       const archive = await page.locator('.archive').elementHandle();
       const scroll = () => page.locator('#main-content').evaluate(main => main.scrollTop);
       const savedScroll = await scroll();
-      const checkTransition = async () => {
-        assert.equal(await page.locator('body > .work-visual').count(), 0, 'The lab transition must not clone or scale its cover.');
-        assert.equal(await page.locator('.chapter-mask').evaluate(mask => mask.getAnimations().length), 0, 'The lab transition must not blur the page.');
-      };
-      await card.click();
+      if (mobile) await card.tap(); else await card.click();
+      await checkPreviewMotion(page,false);
       await detail.waitFor();
       assert.equal(await archive.evaluate(view => view.isConnected && view.hidden), true, 'Keep the list mounted behind the lab detail.');
-      await checkTransition();
-      await detail.getByRole('link', { name: '返回作品' }).click();
+      if (width===390) await page.goBack({waitUntil:'commit'});
+      else await detail.getByRole('link', { name: '返回作品' }).click();
+      await checkPreviewMotion(page,true);
       await card.waitFor();
       assert.equal(await archive.evaluate(view => view.isConnected && !view.hidden), true, 'Reuse the visible archive on return.');
       assert.ok(Math.abs(await scroll() - savedScroll) <= 2, 'Restore the previous position in the works list.');
-      await checkTransition();
+      await page.emulateMedia({reducedMotion:'reduce'});
+      await card.click();
+      await detail.waitFor();
+      assert.equal(await page.locator('.logic-preview-transition').count(),0,'Honor reduced motion.');
+    }
+    if (width === 1440) {
       await page.goto(new URL('/#slices', base).href);
       const entry = page.locator('.moment-card').filter({ hasText: '数字电路实验台上线' });
       assert.equal(await entry.locator('..').locator('time').getAttribute('datetime'), '2026-11-26');

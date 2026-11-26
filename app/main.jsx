@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { pickNavigationTransition } from './navigation-transitions.js';
+import { captureLogicPreview, playLogicPreview } from './logic-preview-transition.js';
 import { playNavigationSound, unlockNavigationAudio } from './navigation-audio.js';
 import avatarUrl from './avatar.jpg';
 import logicLabPreview from './photos/logic-lab-preview.jpg';
@@ -725,15 +726,13 @@ function App() {
       maskAnimation.current?.cancel();
       maskAnimation.current = null;
       if (pendingRef.current) {
-        pendingRef.current.overlay.remove();
+        pendingRef.current.overlay?.remove();
         pendingRef.current = null;
       }
       const active = activeRef.current;
       if (!active) return;
       activeRef.current = null;
-      active.animation.cancel();
-      active.target.classList.remove('work-visual--hidden');
-      active.overlay.remove();
+      active.cleanup();
     };
     const syncPage = (animate = !reducedMotion.matches, direction = 0) => {
       main.querySelector('dialog[open]')?.close();
@@ -749,10 +748,13 @@ function App() {
       } else if (oldPage.startsWith('work-') && nextPage.startsWith('work-')) {
         originRef.current = null;
       }
-      if ((enteringWork || returning) && animate && !logicNavigation) {
+      if ((enteringWork || returning) && animate) {
         const workId = enteringWork ? nextPage : oldPage;
         const source = main.querySelector(`[data-view="${oldPage}"] [data-work-visual="${workId}"]`);
-        if (source && visualInViewport(source)) {
+        if (source && visualInViewport(source) && logicNavigation) {
+          const preview=captureLogicPreview(source,enteringWork);
+          if (preview) pendingRef.current={preview,toPage:nextPage,workId};
+        } else if (source && visualInViewport(source)) {
           const rect = source.getBoundingClientRect();
           const overlay = source.cloneNode(true);
           const shape = source.querySelector('.work-visual__shape');
@@ -769,7 +771,6 @@ function App() {
       pageRef.current = nextPage;
       setPage(nextPage);
       setNavigation({ page: nextPage, focus: true, animate: animate && !logicNavigation, direction,
-        logicArrival: animate && oldPage !== nextPage && nextPage === 'work-logic-lab',
         restore: returning ? originRef.current.scroll : null });
     };
     const navigate = (nextPage, animate, direction) => {
@@ -792,7 +793,7 @@ function App() {
       const effect = canAnimate && !quickSwitch ? pickNavigationTransition(context) : null;
       if (!effect) {
         stopNavigationTransition();
-        navigate(nextPage, false, direction);
+        navigate(nextPage, logicNavigation && !reducedMotion.matches && !document.hidden, direction);
         return;
       }
 
@@ -897,7 +898,6 @@ function App() {
     }
     // Replay the existing paper arrival only for explicitly selected chapters.
     section.classList.remove('is-arriving');
-    section.classList.toggle('is-logic-arriving', Boolean(navigation.logicArrival));
     if (navigation.animate) {
       void section.offsetWidth;
       section.classList.add('is-arriving');
@@ -912,6 +912,19 @@ function App() {
     if (!pending || pending.toPage !== navigation.page) return;
     pendingRef.current = null;
     const target = section.querySelector(`[data-work-visual="${pending.workId}"]`);
+    if (pending.preview) {
+      if (!target || !visualInViewport(target)) return;
+      const active = playLogicPreview(pending.preview, target, main);
+      if (active) {
+        activeRef.current = active;
+        active.animation.onfinish = () => {
+          if (activeRef.current !== active) return;
+          activeRef.current = null;
+          active.cleanup();
+        };
+      }
+      return;
+    }
     if (!target || !visualInViewport(target) || typeof pending.overlay.animate !== 'function') {
       pending.overlay.remove();
       return;
@@ -935,13 +948,17 @@ function App() {
       pending.overlay.remove();
       return;
     }
-    const active = { animation, target, overlay: pending.overlay, to };
+    const cleanup = () => {
+      target.classList.remove('work-visual--hidden');
+      pending.overlay.remove();
+      animation.cancel();
+    };
+    const active = { animation, target, to, cleanup };
     activeRef.current = active;
     animation.onfinish = () => {
       if (activeRef.current !== active) return;
       activeRef.current = null;
-      target.classList.remove('work-visual--hidden');
-      pending.overlay.remove();
+      cleanup();
     };
   }, [navigation]);
 
@@ -998,6 +1015,7 @@ function App() {
   }, [isDetail, navigation.page]);
 
   const hasRetainedArchive = navigation.page === 'work-logic-lab' && originRef.current?.workId === navigation.page;
+  const sharedPage = pendingRef.current?.overlay && pendingRef.current.toPage;
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content" onClick={(event) => {
@@ -1010,14 +1028,14 @@ function App() {
         <main ref={mainRef} id="main-content" className="site-main" tabIndex="-1">
           {(!isDetail || hasRetainedArchive) && (
             <div className="archive" hidden={isDetail}>
-              {CHAPTERS.map(id => <CurrentView key={id} page={id} sharedEntering={pendingRef.current?.toPage === id}
+              {CHAPTERS.map(id => <CurrentView key={id} page={id} sharedEntering={sharedPage === id}
                 isHomeActive={page === 'top'} />)}
             </div>
           )}
           {isDetail && (
             <CurrentView key={navigation.page} page={navigation.page}
               backPage={originRef.current?.workId === navigation.page ? originRef.current.page : 'works'}
-              sharedEntering={pendingRef.current?.toPage === navigation.page} />
+              sharedEntering={sharedPage === navigation.page} />
           )}
         </main>
         <div ref={maskRef} className="chapter-mask" aria-hidden="true" />
