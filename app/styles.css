@@ -216,6 +216,7 @@ h1:focus, .site-main:focus { outline: none; }
 
 .home { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr auto; align-items: center; gap: 2rem clamp(2rem, 6vw, 7rem); padding: clamp(2rem, 5vh, 4.5rem) var(--page-pad) 1.5rem; }
 .home__status {
+  --status-line: color-mix(in srgb, var(--line) 38%, transparent);
   position: absolute;
   z-index: 2;
   inset-block-start: clamp(.4rem, 1.8vh, 1rem);
@@ -225,9 +226,9 @@ h1:focus, .site-main:focus { outline: none; }
   inline-size: max-content;
   max-inline-size: min(24rem, calc(100% - 2 * var(--page-pad)));
   padding-inline: .45rem .65rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--status-line);
   border-radius: .45rem;
-  background: var(--panel);
+  background: color-mix(in srgb, var(--panel) 18%, transparent);
 }
 .home__counter {
   flex: none;
@@ -235,14 +236,14 @@ h1:focus, .site-main:focus { outline: none; }
   max-inline-size: 44%;
   margin: 0;
   padding-inline-start: .65rem;
-  border-inline-start: 1px solid var(--line);
+  border-inline-start: 1px solid var(--status-line);
   color: var(--muted);
   font: .67rem/1.18 var(--mono);
 }
 .home__counter dt { white-space: nowrap; }
 .home__counter dd {
   margin: .15rem 0 0;
-  color: var(--accent);
+  color: color-mix(in srgb, var(--accent) 80%, var(--muted));
   font-size: .93rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
