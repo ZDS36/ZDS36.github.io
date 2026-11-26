@@ -1,10 +1,6 @@
 .pixel-weather {
   --weather-rain: #9bbfda;
-  position: absolute;
-  z-index: 2;
-  inset-block-start: clamp(.4rem, 1.8vh, 1rem);
-  inset-inline-start: var(--page-pad);
-  max-width: calc(100% - 2 * var(--page-pad));
+  min-inline-size: 0;
   color: var(--muted);
   font: .73rem/1.4 var(--mono);
   font-variant-numeric: tabular-nums;
@@ -18,8 +14,9 @@
 }
 .pixel-weather__trigger {
   width: fit-content;
+  max-width: 100%;
   min-height: 44px;
-  padding-inline: .15rem .4rem;
+  padding-inline: .15rem .7rem;
   list-style: none;
   color: var(--paper);
   cursor: pointer;
@@ -63,7 +60,7 @@
 
 .pixel-weather__panel {
   position: absolute;
-  inset-block-start: 100%;
+  inset-block-start: calc(100% + .3rem);
   inset-inline-start: 0;
   width: min(19.5rem, calc(100vw - 2 * var(--page-pad) - 12px));
   max-height: max(9rem, calc(100dvh - var(--header-height) - 4.25rem));

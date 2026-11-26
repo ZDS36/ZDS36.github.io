@@ -275,7 +275,10 @@ function Hero({ sharedEntering, isHomeActive }) {
   return (
     <section className={`view home${sharedEntering ? ' view--shared-enter' : ''}`} data-view="top" aria-labelledby="hero-title"
       onClickCapture={countHomeClick} onAuxClickCapture={countHomeClick}>
-      <PixelWeather active={isHomeActive} />
+      <div className="home__status">
+        <PixelWeather active={isHomeActive} />
+        <SiteCounter />
+      </div>
       <div className="home__intro">
         <p className="page-kicker"><span>00 —</span> 张刀宋的个人档案</p>
 
@@ -317,7 +320,6 @@ function Hero({ sharedEntering, isHomeActive }) {
       <div className="home__foot">
         <p><span className="home__foot-status" /> 一个仍在生长的个人空间</p>
         <a href="#slices" data-home-click>读一读年轮 <span aria-hidden="true">↘</span></a>
-        <SiteCounter />
         <p className="home__edition">PERSONAL ARCHIVE / 2026</p>
       </div>
     </section>
