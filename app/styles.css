@@ -168,9 +168,14 @@ h1:focus, .site-main:focus { outline: none; }
   --paper-shift: min(48px, calc(var(--page-pad) - 10px));
 }
 .view.is-tab-arriving > * { animation: tab-arrive 400ms cubic-bezier(.22, .65, .3, 1); }
+.view.is-work-arriving > * { animation: work-arrive 500ms cubic-bezier(.24, .64, .32, 1) both; }
 @keyframes tab-arrive {
   from { opacity: .78; transform: translateX(var(--tab-shift)); }
   to { opacity: 1; transform: translateX(0); }
+}
+@keyframes work-arrive {
+  from { opacity: .76; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .view.is-arriving:not(.view--shared-enter) > *,
 .view.is-arriving:not(.view--shared-enter) .work-card,
@@ -202,8 +207,8 @@ h1:focus, .site-main:focus { outline: none; }
   72% { transform: translate3d(5px, -3px, 0) rotate(.2deg); }
   to { transform: none; }
 }
-.view--shared-enter.work-detail .work-detail__hero > div:not(.work-visual),
-.view--shared-enter.work-detail .work-detail__body { animation: detail-copy-arrive 520ms ease-out 170ms both; }
+.view--shared-enter.work-detail:not(.is-work-arriving) .work-detail__hero > div:not(.work-visual),
+.view--shared-enter.work-detail:not(.is-work-arriving) .work-detail__body { animation: detail-copy-arrive 520ms ease-out 170ms both; }
 @keyframes detail-copy-arrive { from { opacity: .4; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 .page { padding: clamp(2rem, 5vh, 4.5rem) var(--page-pad) 1.5rem; }
 .page-kicker { display: flex; align-items: center; gap: .7rem; margin: 0 0 2rem; color: var(--faint); font: .65rem/1.8 var(--mono); letter-spacing: .1em; }

@@ -55,6 +55,88 @@ try {
   }
   console.log('Passed: the first header click or tap reaches its chapter without waiting for a cinematic snapshot.');
 
+  const fallbackPage = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  await fallbackPage.route('**/*', route => new URL(route.request().url()).origin === base.origin ? route.continue() : route.abort());
+  await fallbackPage.route('**/logic-lab-preview-*.jpg', route => route.abort());
+  await fallbackPage.goto(new URL('/#works', base).href);
+  await fallbackPage.locator('.work-card--logic').tap();
+  await fallbackPage.locator('[data-view=work-logic-lab].is-work-arriving').waitFor();
+  await fallbackPage.locator('.back-link-v2').tap();
+  await fallbackPage.locator('[data-view=works].is-work-arriving').waitFor();
+  await fallbackPage.goto(new URL('/#work-site', base).href);
+  await fallbackPage.locator('.next-work').tap();
+  await fallbackPage.locator('[data-view=work-logic-lab].is-work-arriving').waitFor();
+  await fallbackPage.locator('.primary-nav a[href="#about"]').tap();
+  await fallbackPage.locator('[data-view=about].is-tab-arriving').waitFor();
+  await fallbackPage.goto(new URL('/#works', base).href);
+  await fallbackPage.addStyleTag({ content: '.work-detail__visual { margin-top: 150vh; }' });
+  await fallbackPage.locator('.work-card--sage').tap();
+  await fallbackPage.locator('[data-view=work-qingping].is-work-arriving').waitFor();
+  assert.equal(await fallbackPage.locator('body > .work-visual, .work-visual--hidden, .logic-preview-transition').count(), 0);
+
+  await fallbackPage.goto(new URL('/?check=interrupted-cover#works', base).href);
+  await fallbackPage.locator('.work-card--sage').tap();
+  const movingCover = fallbackPage.locator('body > .work-visual');
+  await movingCover.evaluate(async cover => {
+    for (const animation of cover.getAnimations({ subtree: true })) {
+      animation.pause();
+      await animation.ready;
+    }
+  });
+  await fallbackPage.locator('.back-link-v2').dispatchEvent('touchstart');
+  assert.equal(await movingCover.count(), 1, 'A tap without scrolling must not dismiss the moving cover.');
+  await fallbackPage.locator('.back-link-v2').tap();
+  await fallbackPage.locator('[data-view=works].is-work-arriving').waitFor();
+  assert.equal(await fallbackPage.locator('body > .work-visual, .work-visual--hidden').count(), 0, 'An interrupted cover must not restart from a position it has not reached.');
+  await fallbackPage.close();
+  console.log('Passed: work links and rapid returns retain an arrival effect with missing or offscreen covers.');
+
+  const slowSnapshotPage = await browser.newPage({ viewport: { width: 1440, height: 844 } });
+  await slowSnapshotPage.route('**/*', route => new URL(route.request().url()).origin === base.origin ? route.continue() : route.abort());
+  await slowSnapshotPage.addInitScript(() => {
+    Math.random = () => .99;
+    let insideClick = false;
+    addEventListener('click', () => { insideClick = true; }, true);
+    addEventListener('click', () => { insideClick = false; });
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+      const context = getContext.call(this, type, ...args);
+      if (type === 'webgl' && context) window.shredContext = { insideClick };
+      return context;
+    };
+    const decode = HTMLImageElement.prototype.decode;
+    HTMLImageElement.prototype.decode = function () {
+      if (!this.src.startsWith('data:image/svg+xml')) return decode.call(this);
+      window.blockedSnapshot = this;
+      return new Promise(() => {});
+    };
+  });
+  await slowSnapshotPage.goto(new URL('/#top', base).href);
+  await slowSnapshotPage.locator('.primary-nav a[href="#works"]').click();
+  await slowSnapshotPage.waitForFunction(() => window.shredContext && !document.getAnimations().some(animation => animation.animationName === 'tab-arrive'));
+  await slowSnapshotPage.evaluate(() => {
+    addEventListener('click', () => {
+      const started = performance.now();
+      const measure = () => {
+        if (location.hash === '#slices') window.fallbackElapsed = performance.now() - started;
+        else requestAnimationFrame(measure);
+      };
+      requestAnimationFrame(measure);
+    }, { capture: true, once: true });
+  });
+  await slowSnapshotPage.locator('.primary-nav a[href="#slices"]').click();
+  await slowSnapshotPage.locator('[data-view=slices].is-tab-arriving').waitFor();
+  await slowSnapshotPage.waitForFunction(() => window.fallbackElapsed !== undefined);
+  const readiness = await slowSnapshotPage.evaluate(() => ({
+    elapsed: window.fallbackElapsed,
+    insideClick: window.shredContext.insideClick,
+    released: window.blockedSnapshot && !window.blockedSnapshot.hasAttribute('src')
+  }));
+  assert.ok(readiness.elapsed < 450 && !readiness.insideClick && readiness.released,
+    `A slow snapshot must release the image and switch promptly. ${JSON.stringify(readiness)}`);
+  await slowSnapshotPage.close();
+  console.log('Passed: slow cinematic preparation yields promptly to the light transition and releases the capture.');
+
   const context = await browser.newContext({ viewport: { width: 1366, height: 768 }, serviceWorkers: 'block' });
   const errors = [];
   const externalRequests = [];

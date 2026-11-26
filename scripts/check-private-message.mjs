@@ -17,6 +17,10 @@ try {
   let captchaFails = false;
   let rateCode = '';
   let errorStatus = 429;
+  await page.route('**/*', route => {
+    const origin = new URL(route.request().url()).origin;
+    return [configured.origin, unconfigured.origin].includes(origin) ? route.continue() : route.abort();
+  });
   await page.route('https://challenges.cloudflare.com/**', route => captchaFails ? route.abort() : route.fulfill({
     contentType: 'text/javascript', body: `
       window.captchaScriptAsync = document.currentScript.async || document.currentScript.defer;
@@ -82,7 +86,23 @@ try {
   assert.equal(requests.length, 0, 'Malformed email must not be sent.');
   await email.fill('');
   outcome = 'error';
+  await page.evaluate(() => {
+    const original = Response.prototype.json;
+    Response.prototype.json = function () {
+      if (new URL(this.url).hostname !== 'qa-messages.qa.workers.dev') return original.call(this);
+      return new Promise((resolve, reject) => {
+        window.releaseErrorBody = () => {
+          Response.prototype.json = original;
+          original.call(this).then(resolve, reject);
+        };
+      });
+    };
+  });
   await submit.click();
+  await page.waitForFunction(() => window.releaseErrorBody);
+  assert.equal(await page.locator('.private-message__form').getAttribute('aria-busy'), 'true',
+    'The form must keep showing progress while the result is still being read.');
+  await page.evaluate(() => window.releaseErrorBody());
   await page.waitForFunction(() => document.getElementById('message-feedback').textContent.includes('内容已保留'));
   assert((await feedback.textContent()).includes('提交过于频繁'), 'Server rate limits need a specific, honest error.');
   assert.equal(await message.inputValue(), '这是一条仅用于本地验证的留言。');
@@ -150,13 +170,44 @@ try {
   assert(await submit.isDisabled(), 'A successful send needs a new verification.');
   await message.fill('下一条留言');
   assert((await submit.textContent()).includes('寄出留言'), 'Editing a new message must restore the send label.');
-  await page.evaluate(() => { location.hash = '#work-site'; });
-  await page.waitForFunction(() => !document.querySelector('.private-message__form'));
+  outcome = 'pending';
+  finishRequest = undefined;
+  await verify();
+  await Promise.all([
+    page.waitForRequest(request => new URL(request.url()).hostname === 'qa-messages.qa.workers.dev'),
+    submit.click()
+  ]);
+  await page.evaluate(() => { location.hash = '#works'; });
+  await page.waitForFunction(() => document.activeElement === document.querySelector('[data-view=works] h1'));
+  assert(finishRequest, 'Mock request did not start.');
+  finishRequest();
+  await page.waitForFunction(() => document.getElementById('message-feedback').textContent.includes('发送成功'));
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  assert.equal(new URL(page.url()).hash, '#works', 'A receipt must not move a visitor back to the contact page.');
   await page.evaluate(() => { location.hash = '#contact'; });
-  await page.waitForFunction(() => window.captcha && document.querySelector('.private-message__form'));
+  await page.waitForFunction(() => document.activeElement === document.querySelector('[data-view=contact] h1'));
+  await page.evaluate(() => { location.hash = '#work-site'; });
+  await page.locator('.private-message__form').waitFor({ state: 'hidden' });
+  await page.evaluate(() => { location.hash = '#contact'; });
+  await page.locator('.private-message__form').waitFor();
+  await page.waitForFunction(() => window.captcha);
   assert(await submit.isDisabled(), 'A remounted form needs fresh verification.');
   assert.equal(await page.locator('#message-turnstile').count(), 1, 'Navigation must reuse the CAPTCHA script.');
   await verify();
+  await page.evaluate(() => {
+    const widget = window.turnstile;
+    const reset = widget.reset;
+    widget.reset = function (...args) {
+      widget.reset = reset;
+      throw new Error('Simulated verification reset failure');
+    };
+  });
+  outcome = 'success';
+  await message.fill('验证重置失败时仍需显示已发送。');
+  await submit.click();
+  await page.waitForFunction(() => document.getElementById('message-feedback').textContent.includes('发送成功'));
+  assert((await page.locator('.private-message__verification').textContent()).includes('验证暂时不可用'));
+  assert(await submit.isDisabled());
   assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0, 'Private messages must not be saved in browser storage.');
   assert.deepEqual(errors, []);
 

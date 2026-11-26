@@ -15,7 +15,9 @@ export default function PrivateMessage() {
   const [verification, setVerification] = useState('loading');
 
   useEffect(() => {
-    if (status === 'success') feedbackElement.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    if (status === 'success' && location.hash === '#contact') {
+      feedbackElement.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    }
   }, [status]);
 
   useEffect(() => {
@@ -87,7 +89,6 @@ export default function PrivateMessage() {
         credentials: 'omit', signal: AbortSignal.timeout(60000)
       });
       if (!response.ok) {
-        setStatus('error');
         const details = await response.json().catch(() => ({}));
         const messages = {
           daily_limit: '这个网络今天已达到 3 次投递上限，请明天再来。内容已保留。',
@@ -99,6 +100,7 @@ export default function PrivateMessage() {
           unavailable: '留言服务暂时无法接收，请稍后再试。内容已保留。'
         };
         const copy = Object.hasOwn(messages, details.code) ? messages[details.code] : null;
+        setStatus('error');
         setFeedback(copy || (response.status === 429
           ? '当前留言通道提交过于频繁，请稍后再试。内容已保留。'
           : '留言服务暂时无法接收，请稍后再试。内容已保留。'));
@@ -119,7 +121,11 @@ export default function PrivateMessage() {
       sending.current = false;
       if (widget.current !== null) {
         setVerification('loading');
-        window.turnstile.reset(widget.current);
+        try {
+          window.turnstile.reset(widget.current);
+        } catch {
+          setVerification('error');
+        }
       }
     }
   };

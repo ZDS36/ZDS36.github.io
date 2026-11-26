@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
-import { pickNavigationTransition } from './navigation-transitions.js';
+import { pickNavigationTransition, prepareNavigationTransitions } from './navigation-transitions.js';
 import { captureLogicPreview, playLogicPreview } from './logic-preview-transition.js';
 import { playNavigationSound, unlockNavigationAudio } from './navigation-audio.js';
 import avatarUrl from './avatar.jpg';
@@ -710,6 +710,12 @@ function App() {
     let activeNavigation = null;
     let lastNavigationClick = -Infinity;
     let hasAnimatedTab = false;
+    let cancelPreparation;
+    const updateEffectPreparation = () => {
+      cancelPreparation?.();
+      cancelPreparation = reducedMotion.matches || document.hidden ? null : prepareNavigationTransitions();
+    };
+    const motionAllowed = () => !reducedMotion.matches && !document.hidden && !root.classList.contains('theme-reveal');
     history.scrollRestoration = 'manual';
     const cancelNavigationPlayback = (active = activeNavigation) => {
       if (!active || active.canceled) return;
@@ -723,7 +729,7 @@ function App() {
       cancelNavigationPlayback(active);
     };
     const clearTransition = () => {
-      main.querySelector('.is-tab-arriving')?.classList.remove('is-tab-arriving');
+      main.querySelector('.is-tab-arriving, .is-work-arriving')?.classList.remove('is-tab-arriving', 'is-work-arriving');
       maskAnimation.current?.cancel();
       maskAnimation.current = null;
       if (pendingRef.current) {
@@ -735,12 +741,13 @@ function App() {
       activeRef.current = null;
       active.cleanup();
     };
-    const syncPage = (animate = !reducedMotion.matches, direction = 0) => {
+    const syncPage = (animate = motionAllowed(), direction = 0) => {
       main.querySelector('dialog[open]')?.close();
       const nextPage = pageFromHash();
       if (window.location.hash !== `#${nextPage}`) history.replaceState(null, '', `#${nextPage}`);
       const oldPage = pageRef.current;
       const logicNavigation = involvesLogicLab(oldPage, nextPage);
+      const interruptedCover = !!activeRef.current;
       clearTransition();
       const isFromWork = oldPage.startsWith('work-');
       const isToWork = nextPage.startsWith('work-');
@@ -751,7 +758,7 @@ function App() {
       } else if (isFromWork && isToWork) {
         originRef.current = null;
       }
-      if ((enteringWork || returning) && animate) {
+      if ((enteringWork || returning) && animate && !interruptedCover) {
         const workId = enteringWork ? nextPage : oldPage;
         const source = main.querySelector(`[data-view="${oldPage}"] [data-work-visual="${workId}"]`);
         if (source && visualInViewport(source)) {
@@ -781,8 +788,8 @@ function App() {
       }
       pageRef.current = nextPage;
       setPage(nextPage);
-      setNavigation({ page: nextPage, focus: true, animate: animate && !logicNavigation,
-        blur: !isFromWork && !isToWork, direction,
+      setNavigation({ page: nextPage, focus: true, animate: animate && oldPage !== nextPage,
+        work: isFromWork || isToWork, shared: !!pendingRef.current?.overlay, direction,
         restore: returning ? originRef.current.scroll : null });
     };
     const navigate = (nextPage, animate, direction) => {
@@ -793,22 +800,22 @@ function App() {
       if (activeNavigation?.toPage === nextPage) return;
       const context = { stage, main, link };
       const logicNavigation = involvesLogicLab(pageRef.current, nextPage);
-      const canAnimate = pageRef.current !== nextPage && !reducedMotion.matches && !document.hidden
-        && !root.classList.contains('theme-reveal') && !logicNavigation;
-      const direction = canAnimate
+      const animate = pageRef.current !== nextPage && motionAllowed();
+      const canPlayCinematic = animate && !logicNavigation;
+      const direction = animate
         ? Math.sign(CHAPTERS.indexOf(nextPage) - CHAPTERS.indexOf(chapterFor(pageRef.current)))
         : 0;
       const now = performance.now();
       // Keep quick clicks responsive while the 400 ms tab motion is still settling.
       const quickSwitch = activeNavigation || now - lastNavigationClick < 400;
-      const firstTab = canAnimate && !hasAnimatedTab;
-      if (canAnimate) hasAnimatedTab = true;
-      if (canAnimate || activeNavigation) lastNavigationClick = now;
+      const firstTab = canPlayCinematic && !hasAnimatedTab;
+      if (canPlayCinematic) hasAnimatedTab = true;
+      if (canPlayCinematic || activeNavigation) lastNavigationClick = now;
       // Enter the first chapter immediately, before creating a snapshot or audio context.
-      const effect = canAnimate && !firstTab && !quickSwitch ? pickNavigationTransition(context) : null;
+      const effect = canPlayCinematic && !firstTab && !quickSwitch ? pickNavigationTransition(context) : null;
       if (!effect) {
         stopNavigationTransition();
-        navigate(nextPage, logicNavigation && !reducedMotion.matches && !document.hidden, direction);
+        navigate(nextPage, animate && !direction, direction);
         return;
       }
 
@@ -820,14 +827,15 @@ function App() {
           || document.hidden || reducedMotion.matches || !effect.sound) return;
         active.stopSound = playNavigationSound(effect.sound);
       };
-      const commit = () => {
+      const commit = (fallback = false) => {
         if (activeNavigation !== active || active.committed) return;
         active.committed = true;
-        flushSync(() => navigate(nextPage, false, active.canceled ? 0 : direction));
+        flushSync(() => navigate(nextPage, fallback && !direction && !active.canceled && motionAllowed(),
+          active.canceled ? 0 : direction));
       };
       const finish = () => {
         if (activeNavigation !== active) return;
-        commit();
+        commit(true);
         stopNavigationTransition();
       };
       try {
@@ -857,12 +865,14 @@ function App() {
       clearTransition();
     };
     const onVisibilityChange = () => {
+      updateEffectPreparation();
       if (document.hidden) {
         cancelNavigationPlayback();
         clearTransition();
       }
     };
     const onMotionChange = () => {
+      updateEffectPreparation();
       if (reducedMotion.matches) {
         cancelNavigationPlayback();
         clearTransition();
@@ -876,10 +886,10 @@ function App() {
     window.addEventListener('resize', onResize);
     main.addEventListener('scroll', onScroll, { passive: true });
     main.addEventListener('wheel', clearTransition, { passive: true });
-    main.addEventListener('touchstart', clearTransition, { passive: true });
     shell.addEventListener('click', onClick);
     document.addEventListener('visibilitychange', onVisibilityChange);
     reducedMotion.addEventListener('change', onMotionChange);
+    updateEffectPreparation();
     if (!document.getElementById('site-entrance') && location.hash !== `#${pageFromHash()}`) {
       history.replaceState(null, '', `#${pageFromHash()}`);
     }
@@ -889,10 +899,10 @@ function App() {
       window.removeEventListener('resize', onResize);
       main.removeEventListener('scroll', onScroll);
       main.removeEventListener('wheel', clearTransition);
-      main.removeEventListener('touchstart', clearTransition);
       shell.removeEventListener('click', onClick);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       reducedMotion.removeEventListener('change', onMotionChange);
+      cancelPreparation?.();
       stopNavigationTransition();
       clearTransition();
     };
@@ -911,38 +921,40 @@ function App() {
       section.style.setProperty('--tab-shift', `${navigation.direction * 18}px`);
       section.classList.add('is-tab-arriving');
     }
-    // A shared cover has its own motion. Other work links can use the paper arrival without the fullscreen blur.
     const pending = pendingRef.current;
     section.classList.remove('is-arriving');
-    if (navigation.animate && !pending) {
-      void section.offsetWidth;
+    const playArrival = () => {
+      if (!navigation.animate || navigation.direction) return;
+      if (navigation.work) {
+        section.classList.add('is-work-arriving');
+        return;
+      }
       section.classList.add('is-arriving');
-      if (navigation.blur && typeof maskRef.current.animate === 'function') {
+      if (typeof maskRef.current.animate === 'function') {
         maskAnimation.current = maskRef.current.animate([
           { backdropFilter: 'blur(10px)', opacity: 1 },
           { backdropFilter: 'blur(0px)', opacity: 0 }
         ], { duration: 620, easing: 'cubic-bezier(.2, .65, .3, 1)' });
       }
-    }
-    if (!pending || pending.toPage !== navigation.page) return;
+    };
+    if (!pending || pending.toPage !== navigation.page) return playArrival();
     pendingRef.current = null;
     const target = section.querySelector(`[data-work-visual="${pending.workId}"]`);
     if (pending.preview) {
-      if (!target || !visualInViewport(target)) return;
+      if (!target || !visualInViewport(target)) return playArrival();
       const active = playLogicPreview(pending.preview, target, main);
-      if (active) {
-        activeRef.current = active;
-        active.animation.onfinish = () => {
-          if (activeRef.current !== active) return;
-          activeRef.current = null;
-          active.cleanup();
-        };
-      }
+      if (!active) return playArrival();
+      activeRef.current = active;
+      active.animation.onfinish = () => {
+        if (activeRef.current !== active) return;
+        activeRef.current = null;
+        active.cleanup();
+      };
       return;
     }
     if (!target || !visualInViewport(target) || typeof pending.overlay.animate !== 'function') {
       pending.overlay.remove();
-      return;
+      return playArrival();
     }
     const to = target.getBoundingClientRect();
     const targetStyle = getComputedStyle(target);
@@ -983,7 +995,7 @@ function App() {
       ], timing));
     } catch {
       cleanup();
-      return;
+      return playArrival();
     }
     const [animation] = animations;
     const active = { animation, target, to, cleanup };
@@ -1048,7 +1060,7 @@ function App() {
   }, [isDetail, navigation.page]);
 
   const hasRetainedArchive = isDetail && originRef.current?.workId === navigation.page;
-  const sharedPage = pendingRef.current?.overlay && pendingRef.current.toPage;
+  const sharedPage = navigation.shared && navigation.page;
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content" onClick={(event) => {

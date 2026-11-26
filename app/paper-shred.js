@@ -44,7 +44,7 @@ function snapshotStyles(width, viewportHeight, avatarData) {
 }
 
 // shortcut: SVG captures local HTML and still images, use a native pixel capture for visible live media.
-async function snapshot(stage, main, width, height, density) {
+async function snapshot(stage, main, width, height, density, signal) {
   const clone = stage.cloneNode(false);
   const { copy: scroller, images } = cloneVisibleMain(main);
   const ambient = stage.querySelector('.ambient').cloneNode(true);
@@ -96,13 +96,21 @@ async function snapshot(stage, main, width, height, density) {
   const style = document.createElement('style');
   if (avatar.complete && avatar.naturalWidth) avatarData ??= freezeImage(avatar, 640);
   const [avatarImage] = await Promise.all([avatarData, ...frozenImages]);
+  signal.throwIfAborted();
   style.textContent = snapshotStyles(width, viewportHeight, avatarImage);
   foreign.append(style, shell);
   svg.append(foreign);
 
   const image = new Image();
   image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
-  await image.decode();
+  const stopDecoding = () => image.removeAttribute('src');
+  signal.addEventListener('abort', stopDecoding, { once: true });
+  try {
+    await image.decode();
+  } finally {
+    signal.removeEventListener('abort', stopDecoding);
+  }
+  signal.throwIfAborted();
   const texture = document.createElement('canvas');
   texture.width = Math.round(width * density);
   texture.height = Math.round(height * density);
@@ -112,10 +120,16 @@ async function snapshot(stage, main, width, height, density) {
 
 export const paperShredTransition = {
   sound: 'shred',
+  prepare() {
+    if (effect !== undefined) return;
+    try {
+      effect = createShred(overlay) ?? null;
+    } catch {
+      effect = null;
+    }
+  },
   supports({ main }) {
-    if (!canSnapshotMain(main)) return false;
-    if (effect === undefined) effect = createShred(overlay);
-    return effect && !effect.lost();
+    return effect && !effect.lost() && canSnapshotMain(main);
   },
   start({ stage, main, playSound }, commit) {
     const { width, height } = stage.getBoundingClientRect();
@@ -126,42 +140,55 @@ export const paperShredTransition = {
     let frame;
     let complete;
     let stopped = false;
+    const capture = new AbortController();
     const finished = new Promise(resolve => { complete = resolve; });
     const cancel = () => {
       if (stopped) return;
       stopped = true;
+      capture.abort();
       clearTimeout(deadline);
       cancelAnimationFrame(frame);
       overlay.remove();
       complete();
     };
-    const deadline = setTimeout(cancel, 600);
+    // The page must still arrive promptly if the first image or screenshot takes too long.
+    const captureBudget = 220;
+    const captureEnd = performance.now() + captureBudget;
+    const deadline = setTimeout(cancel, captureBudget);
 
-    snapshot(stage, main, width, height, density).then(texture => {
-      if (stopped || effect.lost() || Math.abs(main.scrollTop - scrollTop) > 2) return cancel();
-      clearTimeout(deadline);
-      overlay.width = texture.width;
-      overlay.height = texture.height;
-      overlay.dataset.direction = direction;
-      effect.size(width, height);
-      effect.load(texture);
-      stage.append(overlay);
-      effect.draw(direction, 0, strips);
-      commit();
-      playSound();
-      const start = performance.now();
-      let lastDraw = start;
-      function tick(now) {
-        const elapsed = Math.max(0, now - start);
-        if (elapsed >= effect.duration || effect.lost()) return cancel();
-        if (now - lastDraw >= 15) {
-          effect.draw(direction, elapsed / 1000, strips);
-          lastDraw = now;
+    const captureObsolete = () => stopped || performance.now() > captureEnd
+      || effect.lost() || Math.abs(main.scrollTop - scrollTop) > 2;
+    frame = requestAnimationFrame(async () => {
+      if (captureObsolete()) return cancel();
+      try {
+        const texture = await snapshot(stage, main, width, height, density, capture.signal);
+        if (captureObsolete()) return cancel();
+        clearTimeout(deadline);
+        overlay.width = texture.width;
+        overlay.height = texture.height;
+        overlay.dataset.direction = direction;
+        effect.size(width, height);
+        effect.load(texture);
+        stage.append(overlay);
+        effect.draw(direction, 0, strips);
+        commit();
+        playSound();
+        const start = performance.now();
+        let lastDraw = start;
+        function tick(now) {
+          const elapsed = Math.max(0, now - start);
+          if (elapsed >= effect.duration || effect.lost()) return cancel();
+          if (now - lastDraw >= 15) {
+            effect.draw(direction, elapsed / 1000, strips);
+            lastDraw = now;
+          }
+          frame = requestAnimationFrame(tick);
         }
         frame = requestAnimationFrame(tick);
+      } catch {
+        cancel();
       }
-      frame = requestAnimationFrame(tick);
-    }).catch(cancel);
+    });
     return { finished, cancel };
   }
 };
