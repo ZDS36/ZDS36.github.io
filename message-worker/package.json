@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.mjs && node test/runtime.mjs",
+    "test": "node --test test/*.test.mjs && node test/runtime.mjs && node test/site-stats.mjs",
     "deploy": "wrangler deploy",
     "login": "wrangler login"
   },

@@ -43,6 +43,12 @@
 
 本地交互测试使用 4175 与 4177 两个开发服务器：前者设置 `VITE_MESSAGE_ENDPOINT=https://qa-messages.qa.workers.dev/message`、`VITE_TURNSTILE_SITE_KEY=local-mock-site-key`，后者将这两个变量显式置空。运行 `node scripts/check-private-message.mjs http://127.0.0.1:4175 http://127.0.0.1:4177`。验证码和请求全部在本地拦截，不发送邮件；测试值不能用于正式构建。
 
+## 首页网站点击
+
+首页底栏的「网站点击」显示全站浏览与首页内容入口点击的合计。进入网站或刷新页面计一次，点击首页的作品、短片、实验台、关于或年轮入口另计一次。计数服务只保存合计，不记录访客身份。
+
+计数使用独立的 `between-states-site-stats` Worker。在 `message-worker` 目录用 `node test/site-stats.mjs` 验证，再执行 `./Invoke-Wrangler.ps1 deploy --config wrangler.site-stats.jsonc`。将部署返回的地址加 `/site-stats` 设为网站 `.env.local` 的 `VITE_SITE_STATS_ENDPOINT`，再按下方流程发布。`HISTORICAL_CLICKS` 是合计的起始值，目前按站长确认设为 `1256`。
+
 ## 本地开发
 
 ```bash

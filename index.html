@@ -85,6 +85,7 @@
           delete root.dataset.entrance;
           root.inert = false;
           frame.remove();
+          root.dispatchEvent(new Event('entrance:entered'));
           root.querySelector('main')?.focus({preventScroll: true});
           if (animations.length) {
             const abort = new AbortController();

@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "between-states-site-stats",
+  "main": "src/site-stats.mjs",
+  "compatibility_date": "2026-11-04",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  "vars": {
+    "ALLOWED_ORIGIN": "https://zds36.github.io",
+    "HISTORICAL_CLICKS": 1256
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "SITE_STATS", "class_name": "SiteStats" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SiteStats"] }]
+}

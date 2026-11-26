@@ -11,6 +11,7 @@ import { MOMENTS } from './moments.js';
 import { groupMoments } from './timeline.js';
 import PrivateMessage from './PrivateMessage.jsx';
 import PixelWeather from './PixelWeather.jsx';
+import SiteCounter, { countHomeClick, startSiteCounter } from './SiteCounter.jsx';
 
 const TIMELINE = groupMoments(MOMENTS);
 const FILM_URL = '/media/sunk-cost/film.mp4?v=20261026-polished';
@@ -245,9 +246,9 @@ function SiteHeader({ page }) {
   );
 }
 
-function ArrowLink({ href, children, className = '' }) {
+function ArrowLink({ href, children, className = '', trackHomeClick }) {
   return (
-    <a className={`arrow-link ${className}`.trim()} href={href}>
+    <a className={`arrow-link ${className}`.trim()} href={href} data-home-click={trackHomeClick ? '' : undefined}>
       <span>{children}</span>
       <span className="arrow-link__icon" aria-hidden="true">↗</span>
     </a>
@@ -272,7 +273,8 @@ function WorkVisual({ work, className = '' }) {
 
 function Hero({ sharedEntering, isHomeActive }) {
   return (
-    <section className={`view home${sharedEntering ? ' view--shared-enter' : ''}`} data-view="top" aria-labelledby="hero-title">
+    <section className={`view home${sharedEntering ? ' view--shared-enter' : ''}`} data-view="top" aria-labelledby="hero-title"
+      onClickCapture={countHomeClick} onAuxClickCapture={countHomeClick}>
       <PixelWeather active={isHomeActive} />
       <div className="home__intro">
         <p className="page-kicker"><span>00 —</span> 张刀宋的个人档案</p>
@@ -295,13 +297,13 @@ function Hero({ sharedEntering, isHomeActive }) {
         </div>
 
         <div className="home__actions">
-          <ArrowLink href="#works">查看作品</ArrowLink>
-          <a className="text-link" href="#work-logic-lab">数字电路实验台 <span aria-hidden="true">→</span></a>
-          <a className="text-link" href="#about">关于这个空间 <span aria-hidden="true">→</span></a>
+          <ArrowLink href="#works" trackHomeClick>查看作品</ArrowLink>
+          <a className="text-link" href="#work-logic-lab" data-home-click>数字电路实验台 <span aria-hidden="true">→</span></a>
+          <a className="text-link" href="#about" data-home-click>关于这个空间 <span aria-hidden="true">→</span></a>
         </div>
       </div>
 
-      <a className="featured-work" href="#work-film" aria-label="观看精选短片：沉没成本">
+      <a className="featured-work" href="#work-film" data-home-click aria-label="观看精选短片：沉没成本">
         <WorkVisual work={WORKS[0]} className="featured-work__visual" />
         <div className="featured-work__copy">
           <div>
@@ -314,7 +316,8 @@ function Hero({ sharedEntering, isHomeActive }) {
 
       <div className="home__foot">
         <p><span className="home__foot-status" /> 一个仍在生长的个人空间</p>
-        <a href="#slices">读一读年轮 <span aria-hidden="true">↘</span></a>
+        <a href="#slices" data-home-click>读一读年轮 <span aria-hidden="true">↘</span></a>
+        <SiteCounter />
         <p className="home__edition">PERSONAL ARCHIVE / 2026</p>
       </div>
     </section>
@@ -1091,6 +1094,7 @@ function App() {
 }
 
 const root = document.getElementById('root');
+startSiteCounter(root);
 function mountSite() {
   createRoot(root).render(
     <React.StrictMode>

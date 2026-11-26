@@ -274,6 +274,9 @@ h1:focus, .site-main:focus { outline: none; }
 .home__foot span { color: var(--accent); margin-right: .6rem; }
 .home__foot-status { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); vertical-align: middle; }
 .home__foot a { display: flex; align-items: center; gap: 1rem; min-height: 44px; color: var(--paper); font-size: .73rem; }
+.home__counter { display: inline-flex; align-items: baseline; gap: .75rem; min-width: 0; margin: 0; padding: .38rem .7rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--panel); color: var(--muted); font-size: .72rem; letter-spacing: 0; }
+.home__counter dt { white-space: nowrap; }
+.home__counter dd { min-width: 3ch; margin: 0; color: var(--accent); font-size: .88rem; font-weight: 600; font-variant-numeric: tabular-nums; text-align: end; }
 
 .page-heading { display: grid; justify-items: start; gap: .8rem; padding-bottom: clamp(1.5rem, 4vw, 3rem); border-bottom: 1px solid var(--line); }
 .page-heading .page-kicker { margin: 0; }
